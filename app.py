@@ -5,7 +5,7 @@ from src.automation import send_reference_checks
 
 # App Configuration
 st.set_page_config(page_title="Tenant Flow Manager", layout="wide")
-st.title("🏙️ Tenant Flow Manager")
+st.title("Tenant Flow Manager")
 
 # Directory setup
 DOCS_DIR = "documents"
@@ -13,10 +13,10 @@ os.makedirs(DOCS_DIR, exist_ok=True)
 
 # Tabs
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📂 Intake & Screening", 
-    "✍️ Lease Management", 
-    "💰 Financial Sync",
-    "🔔 Action Center"
+    "Intake & Screening", 
+    "Lease Management", 
+    "Financial Sync",
+    "Action Center"
 ])
 
 with tab1:
@@ -44,7 +44,7 @@ with tab1:
                 if not bank_statements: missing.append("Bank Statements")
                 
                 if missing:
-                    st.warning(f"⚠️ Missing required documents: {', '.join(missing)}")
+                    st.warning(f"Missing required documents: {', '.join(missing)}")
                 else:
                     from src.document_gen import save_tenant_documents
                     files = {
@@ -102,7 +102,7 @@ with tab2:
                 st.success(f"Lease generated successfully at `{filepath}`")
                 
                 with open(filepath, "rb") as f:
-                    st.download_button("⬇️ Download Lease PDF", f, file_name=f"{l_unit}_Lease_Agreement.pdf")
+                    st.download_button("Download Lease PDF", f, file_name=f"{l_unit}_Lease_Agreement.pdf")
                     
     with col2:
         st.subheader("Document Status & Pipeline")
@@ -115,7 +115,7 @@ with tab2:
                 
                 st.write(f"**Files in {selected_folder}:**")
                 for f in files:
-                    st.write(f"📄 {f}")
+                    st.write(f"- {f}")
             else:
                 st.info("No unit folders created yet. Process a new intake first.")
         else:
@@ -170,7 +170,7 @@ with tab4:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📅 Today's Tasks")
+        st.subheader("Today's Tasks")
         st.write("Scan 'Lease End Dates' daily and flag units that require action.")
         
         if st.button("Scan for Upcoming Lease Expirations"):
@@ -180,7 +180,7 @@ with tab4:
             if upcoming:
                 st.warning(f"Found {len(upcoming)} lease(s) expiring within 90 days!")
                 for item in upcoming:
-                    with st.expander(f"⚠️ {item['Tenant_Name']} (Unit {item['Unit']}) - {item['Days_Left']} days left", expanded=True):
+                    with st.expander(f"{item['Tenant_Name']} (Unit {item['Unit']}) - {item['Days_Left']} days left", expanded=True):
                         st.write(f"**Lease End Date:** {item['End_Date']}")
                         if st.button(f"Draft & Email Rent Increase Notice", key=f"notice_{item['Unit']}"):
                             from src.automation import draft_rent_increase_notice
@@ -190,7 +190,7 @@ with tab4:
                 st.success("No leases expiring within the next 90 days.")
                 
     with col2:
-        st.subheader("📊 System Overview")
+        st.subheader("System Overview")
         st.write("Current Database Status:")
         
         import pandas as pd
