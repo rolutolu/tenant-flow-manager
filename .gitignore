@@ -1,58 +1,22 @@
-# Environments
+# Environment variables (contains secrets)
 .env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
 
-# Environment variables
-.env
-.env.local
+# Database
+data/tenants.db
+
+# Uploaded documents (may contain PII)
+documents/
 
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+*.pyc
+*.pyo
+.venv/
+venv/
 
-# Streamlit logs & secrets
-.streamlit/secrets.toml
-# You can leave config.toml out of gitignore if you want styles to be shared
+# NiceGUI storage
+.nicegui/
 
-# Project Specific Data (Privacy & PII)
-# 1. Ignore all tenant documents uploaded or generated
-documents/*
-# Keep the directory structure
-!documents/.gitkeep
-
-# 2. Ignore actual database files containing tenant info
-data/*.xlsx
-data/*.csv
-# Keep the directory structure
-!data/.gitkeep
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# IDE
+.vscode/
+.idea/
