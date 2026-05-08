@@ -178,13 +178,20 @@ def intake_page():
                         return
 
                     # Save tenant to database with user_id
-                    tenant_id = add_tenant(
-                        user_id=user_id,
-                        name=name_input.value,
-                        unit=unit_input.value,
-                        unit_address=unit_address_input.value,
-                        rent_amount=rent_input.value or 0,
-                    )
+                    try:
+                        tenant_id = add_tenant(
+                            user_id=user_id,
+                            name=name_input.value,
+                            unit=unit_input.value,
+                            unit_address=unit_address_input.value,
+                            rent_amount=rent_input.value or 0,
+                        )
+                    except Exception as e:
+                        if "duplicate key" in str(e).lower():
+                            ui.notify(f"Unit {unit_input.value} is already occupied or registered.", type="negative")
+                        else:
+                            ui.notify(f"Database error: {str(e)}", type="negative")
+                        return
 
                     # Save uploaded documents
                     saved_count = 0
@@ -216,6 +223,11 @@ def intake_page():
                         ).style(f"color: {TEXT_SECONDARY}")
 
                     ui.notify("Tenant onboarded successfully!", type="positive")
+                    
+                    # Clear state for next entry
+                    uploaded_files.clear()
+                    for badge in ready_indicators.values():
+                        badge.set_visibility(False)
 
                 with ui.stepper_navigation():
                     ui.button("Back", on_click=stepper.previous, icon="arrow_back").props("flat")
