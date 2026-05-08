@@ -1,119 +1,125 @@
-"""Marketing & Advertising Dashboard — placeholder for future API integrations."""
+"""Marketing Dashboard — Meta Marketing API integration (Facebook & Instagram)."""
 
 from nicegui import ui
 from app.auth import require_auth
-from app.theme import page_layout, section_header, ACCENT, TEXT_SECONDARY, WARNING
+from app.theme import page_layout, section_header, ACCENT, TEXT_SECONDARY, WARNING, CARD_BG, BORDER, SUCCESS
+from app.services.marketing_service import is_meta_configured, get_ads, get_account_insights
 
 
 @ui.page("/marketing")
 @require_auth
 def marketing_page():
+    configured = is_meta_configured()
+
     with page_layout(title="Marketing"):
-        section_header("Marketing & Advertising Dashboard",
-                       "Track property listing performance across platforms")
-
-        # ── Coming Soon Banner ─────────────────────────────────────────────
-        with ui.card().classes("w-full p-6 rounded-xl shadow-sm").style(
-            f"border: 1px solid #E2E8F0; background: linear-gradient(135deg, {ACCENT}08, {ACCENT}15)"
-        ):
-            with ui.row().classes("items-center gap-3"):
-                ui.icon("construction", size="32px").style(f"color: {WARNING}")
-                with ui.column().classes("gap-0"):
-                    ui.label("Coming Soon").classes("text-lg font-bold")
-                    ui.label(
-                        "API integrations for marketplace advertising are under development. "
-                        "The cards below show the planned features."
-                    ).classes("text-sm").style(f"color: {TEXT_SECONDARY}")
-
-        # ── Platform Cards ─────────────────────────────────────────────────
-        with ui.row().classes("w-full gap-6 flex-wrap"):
-
-            _platform_card(
-                name="Realtor.ca",
-                icon="home_work",
-                description="Track property listing views, inquiries, and lead conversion rates.",
-                metrics=[
-                    ("Active Listings", "—"),
-                    ("Total Views", "—"),
-                    ("Inquiries", "—"),
-                ],
-            )
-
-            _platform_card(
-                name="Instagram",
-                icon="photo_camera",
-                description="Monitor post engagement, follower growth, and DM inquiries for rental listings.",
-                metrics=[
-                    ("Posts", "—"),
-                    ("Engagement Rate", "—"),
-                    ("DM Leads", "—"),
-                ],
-            )
-
-            _platform_card(
-                name="Facebook Marketplace",
-                icon="storefront",
-                description="Analyze listing performance, messages received, and response times.",
-                metrics=[
-                    ("Active Listings", "—"),
-                    ("Messages", "—"),
-                    ("Avg. Response", "—"),
-                ],
-            )
-
-        # ── Placeholder Chart ──────────────────────────────────────────────
-        with ui.card().classes("w-full p-6 rounded-xl shadow-sm").style(
-            "border: 1px solid #E2E8F0"
-        ):
-            with ui.row().classes("items-center gap-2 mb-4"):
-                ui.icon("trending_up", size="24px").style(f"color: {ACCENT}")
-                ui.label("Lead Generation Overview").classes("text-lg font-semibold")
-
-            ui.echart({
-                "tooltip": {"trigger": "axis"},
-                "legend": {"data": ["Realtor.ca", "Instagram", "Marketplace"]},
-                "xAxis": {
-                    "type": "category",
-                    "data": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-                },
-                "yAxis": {"type": "value", "name": "Leads"},
-                "series": [
-                    {"name": "Realtor.ca", "type": "line", "smooth": True,
-                     "data": [12, 15, 18, 14, 20, 22],
-                     "itemStyle": {"color": "#3B82F6"}},
-                    {"name": "Instagram", "type": "line", "smooth": True,
-                     "data": [5, 8, 6, 10, 12, 9],
-                     "itemStyle": {"color": "#E1306C"}},
-                    {"name": "Marketplace", "type": "line", "smooth": True,
-                     "data": [8, 10, 12, 9, 15, 18],
-                     "itemStyle": {"color": "#1877F2"}},
-                ],
-            }).classes("w-full h-72")
-
-            ui.label(
-                "Note: This chart currently shows sample data. Connect your API "
-                "keys in Settings to display real metrics."
-            ).classes("text-xs mt-2").style(f"color: {TEXT_SECONDARY}")
-
-
-def _platform_card(name: str, icon: str, description: str,
-                   metrics: list[tuple[str, str]]):
-    """A card representing a marketing platform integration."""
-    with ui.card().classes("p-5 rounded-xl shadow-sm flex-1 min-w-[280px]").style(
-        "border: 1px solid #E2E8F0"
-    ):
-        with ui.row().classes("items-center gap-3 mb-3"):
-            with ui.element("div").classes("rounded-lg p-2").style(
-                f"background: {ACCENT}15"
+        # ── Configuration Alert ───────────────────────────────────────────
+        if not configured:
+            with ui.card().classes("w-full p-4 mb-4 shadow-lg border-2 border-amber-200").style(
+                "background: #FFFBEB; z-index: 101;"
             ):
-                ui.icon(icon, size="24px").style(f"color: {ACCENT}")
-            ui.label(name).classes("text-lg font-semibold")
-            ui.badge("Planned", color="orange").classes("ml-auto")
+                with ui.row().classes("items-center justify-between w-full"):
+                    with ui.row().classes("items-center gap-3"):
+                        ui.icon("warning", color="warning", size="24px")
+                        with ui.column().classes("gap-0"):
+                            ui.label("API Keys Required").classes("font-bold text-amber-900")
+                            ui.label("Add META_ACCESS_TOKEN to your .env file to view live listings.").classes("text-sm text-amber-800")
+                    ui.button("How to Setup", on_click=lambda: ui.navigate.to("https://developers.facebook.com/")).props("flat color=warning")
 
-        ui.label(description).classes("text-sm mb-4").style(f"color: {TEXT_SECONDARY}")
+        section_header("Marketing & Advertising", "Manage your Meta (Facebook & Instagram) property listings")
 
-        with ui.row().classes("w-full gap-4 flex-wrap"):
-            for label, value in metrics:
-                with ui.column().classes("gap-0 items-center"):
-                    ui.label(value).classes("text-xl font-bold").style(f"color: {TEXT_SECONDARY}")
-                    ui.label(label).classes("text-xs").style(f"color: {TEXT_SECONDARY}")
+        # Container for content that will be blurred if not configured
+        with ui.element("div").classes("w-full relative") as container:
+            if not configured:
+                container.classes("blur-content")
+                # Transparent overlay to prevent clicks if someone tries to inspect-element remove the blur
+                with ui.element("div").classes("lock-overlay"):
+                    with ui.card().classes("p-8 items-center gap-4 text-center shadow-2xl"):
+                        ui.icon("lock", size="64px", color="grey-4")
+                        ui.label("Marketing Data Locked").classes("text-xl font-bold")
+                        ui.label("Please configure your Meta Marketing API keys to unlock this dashboard.").classes("text-slate-500 max-w-xs")
+
+            # ── Main Content Area ──────────────────────────────────────────
+            with ui.column().classes("w-full gap-6"):
+
+                # ── Listings Section ───────────────────────────────────────
+                with ui.card().classes("w-full p-6 rounded-2xl shadow-sm").style(f"background: {CARD_BG}; border: 1px solid {BORDER}"):
+                    with ui.row().classes("items-center justify-between w-full mb-4"):
+                        with ui.row().classes("items-center gap-3"):
+                            with ui.element("div").classes("rounded-xl p-2.5").style(f"background: {ACCENT}18;"):
+                                ui.icon("campaign", size="24px").style(f"color: {ACCENT}")
+                            ui.label("Current Property Listings").classes("text-lg font-semibold")
+                        ui.button("Refresh Ads", on_click=lambda: refresh_listings()).props("outline icon=refresh")
+
+                    listings_grid = ui.row().classes("w-full gap-4 flex-wrap")
+
+                    def refresh_listings():
+                        listings_grid.clear()
+                        if not configured:
+                            with listings_grid:
+                                for _ in range(3): _placeholder_listing()
+                            return
+
+                        success, ads, err = get_ads()
+                        with listings_grid:
+                            if success and ads:
+                                for ad in ads:
+                                    _listing_card(ad)
+                            else:
+                                ui.notify(f"API Error: {err}", type="negative")
+                                for _ in range(3): _placeholder_listing()
+
+                    refresh_listings()
+
+                # ── Analytics Section ──────────────────────────────────────
+                with ui.row().classes("w-full gap-6 flex-wrap"):
+                    # Facebook Stats
+                    with ui.card().classes("flex-1 min-w-[300px] p-6 rounded-2xl shadow-sm").style(f"background: {CARD_BG}; border: 1px solid {BORDER}"):
+                        with ui.row().classes("items-center gap-3 mb-4"):
+                            ui.icon("facebook", color="blue-8", size="32px")
+                            ui.label("Facebook Performance").classes("text-lg font-semibold")
+
+                        insights = get_account_insights()[1] if configured else {}
+                        _mini_stat("Reach", insights.get("reach", "0"), "groups")
+                        _mini_stat("Spend", f"${insights.get('spend', '0.00')}", "payments")
+
+                    # Instagram Stats
+                    with ui.card().classes("flex-1 min-w-[300px] p-6 rounded-2xl shadow-sm").style(f"background: {CARD_BG}; border: 1px solid {BORDER}"):
+                        with ui.row().classes("items-center gap-3 mb-4"):
+                            ui.icon("camera_alt", color="pink-6", size="32px")
+                            ui.label("Instagram Performance").classes("text-lg font-semibold")
+
+                        _mini_stat("Impressions", insights.get("impressions", "0"), "visibility")
+                        _mini_stat("CTR", f"{insights.get('ctr', '0.00')}%", "ads_click")
+
+
+def _listing_card(ad: dict):
+    """Render a single Meta Ad listing."""
+    creative = ad.get("creative", {})
+    image = creative.get("image_url") or creative.get("thumbnail_url") or "https://via.placeholder.com/300x200?text=No+Image"
+
+    with ui.card().classes("w-72 overflow-hidden rounded-xl shadow-sm border border-slate-100"):
+        ui.image(image).classes("w-full h-40 object-cover")
+        with ui.column().classes("p-4 gap-1"):
+            ui.label(ad.get("name", "Unnamed Ad")).classes("font-bold truncate w-full")
+            status = ad.get("status", "UNKNOWN")
+            color = SUCCESS if status == "ACTIVE" else WARNING
+            ui.badge(status, color=color).classes("text-[10px] w-fit")
+            ui.label(creative.get("body", "")).classes("text-xs text-slate-500 line-clamp-2 mt-1")
+
+
+def _placeholder_listing():
+    """Sample card shown when API is not connected."""
+    with ui.card().classes("w-72 overflow-hidden rounded-xl opacity-40 border border-dashed border-slate-300"):
+        ui.element("div").classes("w-full h-40 bg-slate-200")
+        with ui.column().classes("p-4 gap-2"):
+            ui.element("div").classes("w-3/4 h-4 bg-slate-200 rounded")
+            ui.element("div").classes("w-1/2 h-3 bg-slate-100 rounded")
+
+
+def _mini_stat(label: str, value: str, icon: str):
+    """Small stat row for the performance cards."""
+    with ui.row().classes("items-center justify-between w-full py-2 border-b border-slate-50 last:border-0"):
+        with ui.row().classes("items-center gap-2"):
+            ui.icon(icon, size="16px", color="grey-6")
+            ui.label(label).classes("text-sm text-slate-600")
+        ui.label(str(value)).classes("font-bold text-slate-800")

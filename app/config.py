@@ -4,20 +4,20 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
 DOCS_DIR = BASE_DIR / "documents"
-DB_PATH = DATA_DIR / "tenants.db"
 
 # Ensure directories exist
-DATA_DIR.mkdir(exist_ok=True)
 DOCS_DIR.mkdir(exist_ok=True)
 
+# ── Supabase ───────────────────────────────────────────────────────────────────
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+
 # ── Security ───────────────────────────────────────────────────────────────────
-APP_PASSWORD = os.getenv("APP_PASSWORD", "admin123")
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
 
 # ── Twilio (optional) ─────────────────────────────────────────────────────────
@@ -25,7 +25,12 @@ TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "")
 
+# ── Meta Marketing API (Facebook / Instagram) ─────────────────────────────────
+META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN", "")
+META_AD_ACCOUNT_ID = os.getenv("META_AD_ACCOUNT_ID", "")
+
 # ── App ────────────────────────────────────────────────────────────────────────
 APP_TITLE = "Tenant Flow Manager"
-APP_HOST = "127.0.0.1"
-APP_PORT = 8080
+APP_HOST = os.getenv("HOST", "0.0.0.0")
+# Railway and Render provide the PORT as an environment variable
+APP_PORT = int(os.getenv("PORT", 8080))

@@ -1,9 +1,9 @@
 """Financial Sync page — banking integration, PAD reconciliation, NSF management, revenue dashboard."""
 
 from nicegui import ui
-from app.auth import require_auth
+from app.auth import require_role, get_user_id
 from app.theme import (page_layout, section_header, metric_card,
-                        ACCENT, SUCCESS, WARNING, DANGER, TEXT_SECONDARY)
+                        ACCENT, SUCCESS, WARNING, DANGER, TEXT_SECONDARY, CARD_BG, BORDER)
 from app.services.tenant_service import get_all_tenants
 from app.services.finance_service import (
     update_banking_info, cross_reference_pads, flag_returned_payments,
@@ -13,25 +13,30 @@ from app.services.notification_service import send_nsf_notice
 
 
 @ui.page("/finance")
-@require_auth
+@require_role("admin")
 def finance_page():
+    user_id = get_user_id()
+
     with page_layout(title="Financial Sync"):
         section_header("Financial Synchronization", "Manage banking, PADs, returns, and revenue tracking")
 
         with ui.row().classes("w-full gap-6 flex-wrap items-start"):
 
             # ── Banking Integration ────────────────────────────────────────
-            with ui.card().classes("p-6 rounded-xl shadow-sm flex-1 min-w-[350px]").style(
-                "border: 1px solid #E2E8F0"
+            with ui.card().classes("p-6 rounded-2xl shadow-sm card-hover flex-1 min-w-[350px]").style(
+                f"background: {CARD_BG}; border: 1px solid {BORDER}"
             ):
-                with ui.row().classes("items-center gap-2 mb-4"):
-                    ui.icon("account_balance", size="24px").style(f"color: {ACCENT}")
+                with ui.row().classes("items-center gap-3 mb-4"):
+                    with ui.element("div").classes("rounded-xl p-2.5").style(
+                        f"background: linear-gradient(135deg, {ACCENT}18, {ACCENT}08);"
+                    ):
+                        ui.icon("account_balance", size="24px").style(f"color: {ACCENT}")
                     ui.label("Banking Integration").classes("text-lg font-semibold")
                 ui.label("Add or update encrypted banking info for PAD scheduling").classes(
                     "text-sm mb-3"
                 ).style(f"color: {TEXT_SECONDARY}")
 
-                tenants = get_all_tenants()
+                tenants = get_all_tenants(user_id)
                 tenant_options = {t["id"]: f"{t['unit']} - {t['name']}" for t in tenants}
                 selected_tenant = ui.select(
                     label="Select Tenant",
@@ -58,14 +63,17 @@ def finance_page():
 
                 ui.button("Encrypt & Save to PAD System", on_click=save_bank, icon="lock").classes(
                     "w-full mt-2"
-                ).props("unelevated")
+                ).props("unelevated rounded")
 
             # ── Monthly Reconciliation ─────────────────────────────────────
-            with ui.card().classes("p-6 rounded-xl shadow-sm flex-1 min-w-[350px]").style(
-                "border: 1px solid #E2E8F0"
+            with ui.card().classes("p-6 rounded-2xl shadow-sm card-hover flex-1 min-w-[350px]").style(
+                f"background: {CARD_BG}; border: 1px solid {BORDER}"
             ):
-                with ui.row().classes("items-center gap-2 mb-4"):
-                    ui.icon("compare_arrows", size="24px").style(f"color: {ACCENT}")
+                with ui.row().classes("items-center gap-3 mb-4"):
+                    with ui.element("div").classes("rounded-xl p-2.5").style(
+                        f"background: linear-gradient(135deg, {ACCENT}18, {ACCENT}08);"
+                    ):
+                        ui.icon("compare_arrows", size="24px").style(f"color: {ACCENT}")
                     ui.label("Monthly Reconciliation").classes("text-lg font-semibold")
                 ui.label("Cross-reference rent roll against scheduled PADs before the 1st").classes(
                     "text-sm mb-3"
@@ -75,7 +83,7 @@ def finance_page():
 
                 def run_reconciliation():
                     recon_result.clear()
-                    success, msg, discrepancies = cross_reference_pads()
+                    success, msg, discrepancies = cross_reference_pads(user_id)
                     with recon_result:
                         if success:
                             with ui.row().classes("items-center gap-2"):
@@ -91,14 +99,17 @@ def finance_page():
                                 )
 
                 ui.button("Run Cross-Reference Check", on_click=run_reconciliation,
-                          icon="sync").classes("w-full").props("unelevated")
+                          icon="sync").classes("w-full").props("unelevated rounded")
 
         # ── Returns Management ─────────────────────────────────────────────
-        with ui.card().classes("w-full p-6 rounded-xl shadow-sm").style(
-            "border: 1px solid #E2E8F0"
+        with ui.card().classes("w-full p-6 rounded-2xl shadow-sm").style(
+            f"background: {CARD_BG}; border: 1px solid {BORDER}"
         ):
-            with ui.row().classes("items-center gap-2 mb-4"):
-                ui.icon("report_problem", size="24px").style(f"color: {DANGER}")
+            with ui.row().classes("items-center gap-3 mb-4"):
+                with ui.element("div").classes("rounded-xl p-2.5").style(
+                    f"background: linear-gradient(135deg, {DANGER}18, {DANGER}08);"
+                ):
+                    ui.icon("report_problem", size="24px").style(f"color: {DANGER}")
                 ui.label("Returns Management (NSF/ISF)").classes("text-lg font-semibold")
             ui.label(
                 "Flag returned payments and send 48-hour e-transfer notices"
@@ -108,12 +119,12 @@ def finance_page():
 
             def check_returns():
                 nsf_container.clear()
-                cases, msg = flag_returned_payments()
+                cases, msg = flag_returned_payments(user_id)
                 with nsf_container:
                     if cases:
                         ui.label(msg).classes("text-sm font-medium").style(f"color: {WARNING}")
                         for case in cases:
-                            with ui.card().classes("p-4 rounded-lg w-full").style(
+                            with ui.card().classes("p-4 rounded-xl w-full").style(
                                 "border: 1px solid #FED7AA; background: #FFFBEB"
                             ):
                                 with ui.row().classes("items-center justify-between w-full"):
@@ -128,7 +139,7 @@ def finance_page():
                                         "Send 48h Notice",
                                         on_click=lambda _, c=case: _send_notice(c),
                                         icon="email",
-                                    ).props("unelevated color=warning size=sm")
+                                    ).props("unelevated color=warning size=sm rounded")
                     else:
                         with ui.row().classes("items-center gap-2"):
                             ui.icon("check_circle", size="20px").style(f"color: {SUCCESS}")
@@ -136,17 +147,20 @@ def finance_page():
                                 f"color: {SUCCESS}"
                             )
 
-            ui.button("Check for Returns", on_click=check_returns, icon="search").props("unelevated")
+            ui.button("Check for Returns", on_click=check_returns, icon="search").props("unelevated rounded")
 
         # ── Revenue Dashboard ──────────────────────────────────────────────
-        with ui.card().classes("w-full p-6 rounded-xl shadow-sm").style(
-            "border: 1px solid #E2E8F0"
+        with ui.card().classes("w-full p-6 rounded-2xl shadow-sm").style(
+            f"background: {CARD_BG}; border: 1px solid {BORDER}"
         ):
-            with ui.row().classes("items-center gap-2 mb-4"):
-                ui.icon("bar_chart", size="24px").style(f"color: {ACCENT}")
+            with ui.row().classes("items-center gap-3 mb-4"):
+                with ui.element("div").classes("rounded-xl p-2.5").style(
+                    f"background: linear-gradient(135deg, {ACCENT}18, {ACCENT}08);"
+                ):
+                    ui.icon("bar_chart", size="24px").style(f"color: {ACCENT}")
                 ui.label("Revenue Dashboard").classes("text-lg font-semibold")
 
-            revenue = get_revenue_summary()
+            revenue = get_revenue_summary(user_id)
             with ui.row().classes("w-full gap-4 flex-wrap"):
                 metric_card("PAD Revenue", f"${revenue['PAD']:,.0f}", "account_balance", ACCENT)
                 metric_card("E-Transfer Revenue", f"${revenue['E-Transfer']:,.0f}", "send_to_mobile", SUCCESS)

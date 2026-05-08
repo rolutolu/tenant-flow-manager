@@ -1,9 +1,25 @@
-"""SQLite database initialization and encryption helpers."""
+"""Supabase database client and encryption helpers."""
 
-import sqlite3
-from pathlib import Path
 from cryptography.fernet import Fernet, InvalidToken
-from app.config import DB_PATH, ENCRYPTION_KEY
+from supabase import create_client, Client
+from app.config import SUPABASE_URL, SUPABASE_KEY, ENCRYPTION_KEY
+
+
+# ── Supabase Client (singleton) ───────────────────────────────────────────────
+
+_client: Client | None = None
+
+
+def get_client() -> Client:
+    """Return the Supabase client singleton."""
+    global _client
+    if _client is None:
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            raise RuntimeError(
+                "SUPABASE_URL and SUPABASE_KEY must be set in your .env file."
+            )
+        _client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    return _client
 
 
 # ── Encryption ─────────────────────────────────────────────────────────────────
@@ -32,64 +48,3 @@ def decrypt_value(ciphertext: str) -> str:
         except (InvalidToken, Exception):
             return ciphertext  # Return as-is if decryption fails (e.g., not encrypted)
     return ciphertext
-
-
-# ── Database Connection ────────────────────────────────────────────────────────
-
-def get_connection() -> sqlite3.Connection:
-    """Return a connection to the SQLite database with row_factory enabled."""
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
-
-
-# ── Schema ─────────────────────────────────────────────────────────────────────
-
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS tenants (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    name            TEXT    NOT NULL,
-    unit            TEXT    NOT NULL UNIQUE,
-    rent_amount     REAL    NOT NULL DEFAULT 0,
-    lease_start     TEXT,
-    lease_end       TEXT,
-    bank_info       TEXT    DEFAULT '',
-    banking_set_up  TEXT    DEFAULT 'No',
-    move_in_status  TEXT    DEFAULT 'Pending',
-    lease_signed    TEXT    DEFAULT 'No',
-    created_at      TEXT    DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS payments (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    tenant_id       INTEGER NOT NULL,
-    amount          REAL    NOT NULL,
-    payment_type    TEXT    DEFAULT 'PAD',
-    status          TEXT    DEFAULT 'Completed',
-    date            TEXT    DEFAULT (date('now')),
-    notes           TEXT    DEFAULT '',
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS documents (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    tenant_id       INTEGER NOT NULL,
-    filename        TEXT    NOT NULL,
-    filepath        TEXT    NOT NULL,
-    doc_type        TEXT    DEFAULT 'Other',
-    uploaded_at     TEXT    DEFAULT (datetime('now')),
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-);
-"""
-
-
-def init_db():
-    """Create tables if they do not exist."""
-    conn = get_connection()
-    try:
-        conn.executescript(SCHEMA)
-        conn.commit()
-    finally:
-        conn.close()

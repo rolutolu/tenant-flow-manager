@@ -1,29 +1,33 @@
 """Lease Management page — generate leases, view status, browse documents."""
 
 from nicegui import ui
-from app.auth import require_auth
-from app.theme import page_layout, section_header, ACCENT, SUCCESS, WARNING, TEXT_SECONDARY
+from app.auth import require_role, get_user_id
+from app.theme import page_layout, section_header, ACCENT, SUCCESS, WARNING, TEXT_SECONDARY, CARD_BG, BORDER
 from app.services.tenant_service import get_all_tenants
 from app.services.lease_service import generate_lease_pdf
-from app.services.document_service import list_all_document_folders, get_tenant_documents
-from app.config import DOCS_DIR
-import os
+from app.services.document_service import list_all_document_folders, get_signed_url
+from app.models.database import get_client
 
 
 @ui.page("/lease")
-@require_auth
+@require_role("admin", "manager")
 def lease_page():
+    user_id = get_user_id()
+
     with page_layout(title="Lease Management"):
         section_header("Lease Management", "Generate agreements, track signatures, and browse documents")
 
         with ui.row().classes("w-full gap-6 flex-wrap items-start"):
 
             # ── Left: Generate Lease ───────────────────────────────────────
-            with ui.card().classes("p-6 rounded-xl shadow-sm flex-1 min-w-[350px]").style(
-                "border: 1px solid #E2E8F0"
+            with ui.card().classes("p-6 rounded-2xl shadow-sm card-hover flex-1 min-w-[350px]").style(
+                f"background: {CARD_BG}; border: 1px solid {BORDER}"
             ):
-                with ui.row().classes("items-center gap-2 mb-4"):
-                    ui.icon("description", size="24px").style(f"color: {ACCENT}")
+                with ui.row().classes("items-center gap-3 mb-4"):
+                    with ui.element("div").classes("rounded-xl p-2.5").style(
+                        f"background: linear-gradient(135deg, {ACCENT}18, {ACCENT}08);"
+                    ):
+                        ui.icon("description", size="24px").style(f"color: {ACCENT}")
                     ui.label("Generate New Lease").classes("text-lg font-semibold")
 
                 tenant_name = ui.input(label="Tenant Name").classes("w-full").props("outlined")
@@ -56,17 +60,20 @@ def lease_page():
 
                 ui.button("Generate Lease PDF", on_click=generate, icon="picture_as_pdf").classes(
                     "w-full mt-2"
-                ).props("unelevated")
+                ).props("unelevated rounded")
 
             # ── Right: Lease Status Table ──────────────────────────────────
-            with ui.card().classes("p-6 rounded-xl shadow-sm flex-1 min-w-[350px]").style(
-                "border: 1px solid #E2E8F0"
+            with ui.card().classes("p-6 rounded-2xl shadow-sm flex-1 min-w-[350px]").style(
+                f"background: {CARD_BG}; border: 1px solid {BORDER}"
             ):
-                with ui.row().classes("items-center gap-2 mb-4"):
-                    ui.icon("list_alt", size="24px").style(f"color: {ACCENT}")
+                with ui.row().classes("items-center gap-3 mb-4"):
+                    with ui.element("div").classes("rounded-xl p-2.5").style(
+                        f"background: linear-gradient(135deg, {ACCENT}18, {ACCENT}08);"
+                    ):
+                        ui.icon("list_alt", size="24px").style(f"color: {ACCENT}")
                     ui.label("Lease Status").classes("text-lg font-semibold")
 
-                tenants = get_all_tenants()
+                tenants = get_all_tenants(user_id)
                 if tenants:
                     columns = [
                         {"name": "unit", "label": "Unit", "field": "unit", "align": "left"},
@@ -85,11 +92,14 @@ def lease_page():
                     )
 
         # ── Bottom: Document Browser ───────────────────────────────────────
-        with ui.card().classes("w-full p-6 rounded-xl shadow-sm mt-2").style(
-            "border: 1px solid #E2E8F0"
+        with ui.card().classes("w-full p-6 rounded-2xl shadow-sm mt-2").style(
+            f"background: {CARD_BG}; border: 1px solid {BORDER}"
         ):
-            with ui.row().classes("items-center gap-2 mb-4"):
-                ui.icon("folder_open", size="24px").style(f"color: {ACCENT}")
+            with ui.row().classes("items-center gap-3 mb-4"):
+                with ui.element("div").classes("rounded-xl p-2.5").style(
+                    f"background: linear-gradient(135deg, {ACCENT}18, {ACCENT}08);"
+                ):
+                    ui.icon("folder_open", size="24px").style(f"color: {ACCENT}")
                 ui.label("Document Browser").classes("text-lg font-semibold")
 
             folders = list_all_document_folders()
@@ -104,23 +114,39 @@ def lease_page():
                 def show_files():
                     file_list.clear()
                     if selected_folder.value:
-                        folder_path = DOCS_DIR / selected_folder.value
-                        if folder_path.exists():
-                            files = list(folder_path.iterdir())
+                        client = get_client()
+                        try:
+                            # List files in the selected subfolder (tenants/folder_name)
+                            full_path = f"tenants/{selected_folder.value}"
+                            files = client.storage.from_("documents").list(full_path)
+                            
                             with file_list:
                                 if files:
                                     for f in files:
-                                        with ui.row().classes("items-center gap-2"):
-                                            ui.icon("insert_drive_file", size="18px").style(
-                                                f"color: {TEXT_SECONDARY}"
-                                            )
-                                            ui.label(f.name).classes("text-sm")
+                                        # Skip 'placeholder' or hidden files
+                                        if f['name'] == '.emptyFolderPlaceholder': continue
+                                        
+                                        with ui.row().classes("items-center justify-between w-full p-3 rounded-lg hover:bg-slate-50 border border-slate-100"):
+                                            with ui.row().classes("items-center gap-3"):
+                                                ui.icon("description", size="20px", color="primary")
+                                                ui.label(f['name']).classes("text-sm font-medium")
+                                            
+                                            # Generate a 60-second signed URL when clicked
+                                            def open_file(path=f"{full_path}/{f['name']}"):
+                                                url = get_signed_url(path)
+                                                if url:
+                                                    ui.navigate.to(url, new_tab=True)
+                                                else:
+                                                    ui.notify("Error generating link", type="negative")
+                                                    
+                                            ui.button("View", on_click=open_file).props("flat dense color=primary")
                                 else:
-                                    ui.label("No files in this folder.").classes("text-sm").style(
-                                        f"color: {TEXT_SECONDARY}"
-                                    )
+                                    ui.label("No files in this folder.").classes("text-sm text-slate-500")
+                        except Exception as e:
+                            with file_list:
+                                ui.label(f"Error loading files: {str(e)}").classes("text-negative")
 
-                selected_folder.on("update:model-value", lambda: show_files())
+                selected_folder.on_value_change(show_files)
             else:
                 ui.label("No document folders created yet. Process a new intake first.").classes(
                     "text-sm"

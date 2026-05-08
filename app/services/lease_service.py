@@ -1,19 +1,15 @@
 """Lease PDF generation and rent increase notice handling."""
 
-import os
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import datetime
+import io
 from fpdf import FPDF
-from app.config import DOCS_DIR
-from app.services.document_service import get_tenant_folder, sanitize_name
-from app.models.database import get_connection
+from app.services.document_service import save_uploaded_file
+from app.models.database import get_client
 
 
 def generate_lease_pdf(tenant_name: str, unit: str, rent_amount: float,
                        start_date: str, end_date: str) -> str:
-    """Generate a PDF lease agreement and return the file path."""
-    folder = get_tenant_folder(tenant_name, unit)
-
+    """Generate a PDF lease agreement and return the cloud path."""
     pdf = FPDF()
     pdf.add_page()
 
@@ -59,17 +55,35 @@ def generate_lease_pdf(tenant_name: str, unit: str, rent_amount: float,
     pdf.cell(20, 8, txt="", ln=False)
     pdf.cell(90, 8, txt="Date: _________________", ln=True)
 
-    filepath = folder / "Lease_Agreement.pdf"
-    pdf.output(str(filepath))
-    return str(filepath)
+    # Generate PDF in memory
+    pdf_output = pdf.output(dest='S')
+    content = pdf_output if isinstance(pdf_output, bytes) else pdf_output.encode('latin-1')
+
+    # Get tenant ID from database to associate the file
+    client = get_client()
+    tenant_resp = client.table("tenants").select("id").eq("name", tenant_name).eq("unit", unit).execute()
+    if not tenant_resp.data:
+        raise Exception(f"Tenant '{tenant_name}' at Unit '{unit}' not found.")
+    
+    tenant_id = tenant_resp.data[0]['id']
+
+    # Upload to Supabase Storage
+    cloud_path = save_uploaded_file(
+        tenant_id=tenant_id,
+        tenant_name=tenant_name,
+        unit=unit,
+        filename="Lease_Agreement.pdf",
+        content=content,
+        doc_type="Lease"
+    )
+
+    return cloud_path
 
 
 def generate_rent_increase_notice(tenant_name: str, unit: str,
                                   current_rent: float, new_rent: float,
                                   effective_date: str) -> str:
-    """Generate a rent increase notice PDF and return the file path."""
-    folder = get_tenant_folder(tenant_name, unit)
-
+    """Generate a rent increase notice PDF and return the cloud path."""
     pdf = FPDF()
     pdf.add_page()
 
@@ -101,28 +115,52 @@ def generate_rent_increase_notice(tenant_name: str, unit: str,
     pdf.cell(20, 8, txt="", ln=False)
     pdf.cell(90, 8, txt="Date", ln=True)
 
-    filepath = folder / "Rent_Increase_Notice.pdf"
-    pdf.output(str(filepath))
-    return str(filepath)
+    # Generate PDF in memory
+    pdf_output = pdf.output(dest='S')
+    content = pdf_output if isinstance(pdf_output, bytes) else pdf_output.encode('latin-1')
+
+    # Get tenant ID from database
+    client = get_client()
+    tenant_resp = client.table("tenants").select("id").eq("name", tenant_name).eq("unit", unit).execute()
+    if not tenant_resp.data:
+        raise Exception(f"Tenant '{tenant_name}' at Unit '{unit}' not found.")
+    
+    tenant_id = tenant_resp.data[0]['id']
+
+    # Upload to Supabase Storage
+    cloud_path = save_uploaded_file(
+        tenant_id=tenant_id,
+        tenant_name=tenant_name,
+        unit=unit,
+        filename="Rent_Increase_Notice.pdf",
+        content=content,
+        doc_type="Notice"
+    )
+
+    return cloud_path
 
 
-def get_expiring_leases(days: int = 90) -> list[dict]:
+def get_expiring_leases(user_id: str, days: int = 90) -> list[dict]:
     """Return tenants whose leases expire within the given number of days."""
-    conn = get_connection()
-    try:
-        rows = conn.execute("SELECT * FROM tenants WHERE lease_end IS NOT NULL AND lease_end != ''").fetchall()
-        today = datetime.now()
-        results = []
-        for row in rows:
-            d = dict(row)
-            try:
-                end_date = datetime.strptime(d["lease_end"].split(" ")[0], "%Y-%m-%d")
-                days_left = (end_date - today).days
-                if 0 < days_left <= days:
-                    d["days_left"] = days_left
-                    results.append(d)
-            except (ValueError, AttributeError):
-                continue
-        return sorted(results, key=lambda x: x["days_left"])
-    finally:
-        conn.close()
+    client = get_client()
+    response = (
+        client.table("tenants")
+        .select("*")
+        .eq("user_id", user_id)
+        .neq("lease_end", "")
+        .not_.is_("lease_end", "null")
+        .execute()
+    )
+    today = datetime.now()
+    results = []
+    for row in (response.data or []):
+        try:
+            end_str = row["lease_end"].split(" ")[0]
+            end_date = datetime.strptime(end_str, "%Y-%m-%d")
+            days_left = (end_date - today).days
+            if 0 < days_left <= days:
+                row["days_left"] = days_left
+                results.append(row)
+        except (ValueError, AttributeError):
+            continue
+    return sorted(results, key=lambda x: x["days_left"])

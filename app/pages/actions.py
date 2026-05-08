@@ -1,9 +1,9 @@
 """Action Center & Compliance page — lease expiration scanner and rent increase notices."""
 
 from nicegui import ui
-from app.auth import require_auth
+from app.auth import require_auth, get_user_id, get_user_role
 from app.theme import (page_layout, section_header, metric_card,
-                        ACCENT, SUCCESS, WARNING, DANGER, TEXT_SECONDARY)
+                        ACCENT, SUCCESS, WARNING, DANGER, TEXT_SECONDARY, CARD_BG, BORDER, TEXT_PRIMARY)
 from app.services.tenant_service import get_all_tenants, get_tenant_count, get_pending_signatures_count
 from app.services.lease_service import get_expiring_leases, generate_rent_increase_notice
 
@@ -11,6 +11,9 @@ from app.services.lease_service import get_expiring_leases, generate_rent_increa
 @ui.page("/actions")
 @require_auth
 def actions_page():
+    user_id = get_user_id()
+    role = get_user_role()
+
     with page_layout(title="Action Center"):
         section_header("Action Center & Compliance",
                        "Proactively manage lease expirations and rent increase notices")
@@ -18,11 +21,14 @@ def actions_page():
         with ui.row().classes("w-full gap-6 flex-wrap items-start"):
 
             # ── Left: Lease Expiration Scanner ─────────────────────────────
-            with ui.card().classes("p-6 rounded-xl shadow-sm flex-1 min-w-[400px]").style(
-                "border: 1px solid #E2E8F0"
+            with ui.card().classes("p-6 rounded-2xl shadow-sm flex-1 min-w-[400px]").style(
+                f"background: {CARD_BG}; border: 1px solid {BORDER}"
             ):
-                with ui.row().classes("items-center gap-2 mb-4"):
-                    ui.icon("schedule", size="24px").style(f"color: {WARNING}")
+                with ui.row().classes("items-center gap-3 mb-4"):
+                    with ui.element("div").classes("rounded-xl p-2.5").style(
+                        f"background: linear-gradient(135deg, {WARNING}18, {WARNING}08);"
+                    ):
+                        ui.icon("schedule", size="24px").style(f"color: {WARNING}")
                     ui.label("Upcoming Lease Expirations").classes("text-lg font-semibold")
                 ui.label(
                     "Scan for leases expiring within 90 days. Rent increase notices must be "
@@ -33,7 +39,7 @@ def actions_page():
 
                 def scan_expirations():
                     results_container.clear()
-                    expiring = get_expiring_leases(days=90)
+                    expiring = get_expiring_leases(user_id, days=90)
                     with results_container:
                         if expiring:
                             ui.label(
@@ -52,34 +58,35 @@ def actions_page():
                                             f"Current Rent: ${tenant['rent_amount']:,.2f}"
                                         ).classes("text-sm")
 
-                                        with ui.row().classes("gap-2"):
-                                            new_rent = ui.number(
-                                                label="New Rent ($)",
-                                                value=tenant["rent_amount"] * 1.03,
-                                                min=0, step=25
-                                            ).classes("w-40").props("outlined dense")
+                                        if role in ("admin", "manager"):
+                                            with ui.row().classes("gap-2"):
+                                                new_rent = ui.number(
+                                                    label="New Rent ($)",
+                                                    value=tenant["rent_amount"] * 1.03,
+                                                    min=0, step=25
+                                                ).classes("w-40").props("outlined dense")
 
-                                            def draft_notice(t=tenant, nr=new_rent):
-                                                try:
-                                                    path = generate_rent_increase_notice(
-                                                        tenant_name=t["name"],
-                                                        unit=t["unit"],
-                                                        current_rent=t["rent_amount"],
-                                                        new_rent=nr.value,
-                                                        effective_date=t["lease_end"],
-                                                    )
-                                                    ui.notify(
-                                                        f"Notice generated: {path}",
-                                                        type="positive"
-                                                    )
-                                                except Exception as e:
-                                                    ui.notify(f"Error: {str(e)}", type="negative")
+                                                def draft_notice(t=tenant, nr=new_rent):
+                                                    try:
+                                                        path = generate_rent_increase_notice(
+                                                            tenant_name=t["name"],
+                                                            unit=t["unit"],
+                                                            current_rent=t["rent_amount"],
+                                                            new_rent=nr.value,
+                                                            effective_date=t["lease_end"],
+                                                        )
+                                                        ui.notify(
+                                                            f"Notice generated: {path}",
+                                                            type="positive"
+                                                        )
+                                                    except Exception as e:
+                                                        ui.notify(f"Error: {str(e)}", type="negative")
 
-                                            ui.button(
-                                                "Draft Notice",
-                                                on_click=draft_notice,
-                                                icon="drafts",
-                                            ).props("unelevated size=sm")
+                                                ui.button(
+                                                    "Draft Notice",
+                                                    on_click=draft_notice,
+                                                    icon="drafts",
+                                                ).props("unelevated size=sm rounded")
                         else:
                             with ui.row().classes("items-center gap-2"):
                                 ui.icon("check_circle", size="24px").style(f"color: {SUCCESS}")
@@ -91,36 +98,42 @@ def actions_page():
                     "Scan for Upcoming Expirations",
                     on_click=scan_expirations,
                     icon="radar",
-                ).classes("w-full").props("unelevated")
+                ).classes("w-full").props("unelevated rounded")
 
             # ── Right: System Overview ─────────────────────────────────────
             with ui.column().classes("gap-4 flex-1 min-w-[300px]"):
-                with ui.card().classes("p-6 rounded-xl shadow-sm w-full").style(
-                    "border: 1px solid #E2E8F0"
+                with ui.card().classes("p-6 rounded-2xl shadow-sm w-full").style(
+                    f"background: {CARD_BG}; border: 1px solid {BORDER}"
                 ):
-                    with ui.row().classes("items-center gap-2 mb-4"):
-                        ui.icon("analytics", size="24px").style(f"color: {ACCENT}")
+                    with ui.row().classes("items-center gap-3 mb-4"):
+                        with ui.element("div").classes("rounded-xl p-2.5").style(
+                            f"background: linear-gradient(135deg, {ACCENT}18, {ACCENT}08);"
+                        ):
+                            ui.icon("analytics", size="24px").style(f"color: {ACCENT}")
                         ui.label("System Overview").classes("text-lg font-semibold")
 
                     with ui.column().classes("gap-3 w-full"):
-                        metric_card("Total Active Tenants", get_tenant_count(), "people", ACCENT)
-                        metric_card("Pending Signatures", get_pending_signatures_count(),
+                        metric_card("Total Active Tenants", get_tenant_count(user_id), "people", ACCENT)
+                        metric_card("Pending Signatures", get_pending_signatures_count(user_id),
                                     "edit_note", WARNING)
 
                 # ── Tenant Database ────────────────────────────────────────
-                with ui.card().classes("p-6 rounded-xl shadow-sm w-full").style(
-                    "border: 1px solid #E2E8F0"
+                with ui.card().classes("p-6 rounded-2xl shadow-sm w-full").style(
+                    f"background: {CARD_BG}; border: 1px solid {BORDER}"
                 ):
-                    with ui.row().classes("items-center gap-2 mb-4"):
-                        ui.icon("table_chart", size="24px").style(f"color: {ACCENT}")
+                    with ui.row().classes("items-center gap-3 mb-4"):
+                        with ui.element("div").classes("rounded-xl p-2.5").style(
+                            f"background: linear-gradient(135deg, {ACCENT}18, {ACCENT}08);"
+                        ):
+                            ui.icon("table_chart", size="24px").style(f"color: {ACCENT}")
                         ui.label("Current Database").classes("text-lg font-semibold")
 
-                    tenants = get_all_tenants()
+                    tenants = get_all_tenants(user_id)
                     if tenants:
                         # Hide sensitive bank_info from the display
                         display_tenants = []
                         for t in tenants:
-                            dt = {k: v for k, v in t.items() if k != "bank_info"}
+                            dt = {k: v for k, v in t.items() if k not in ("bank_info", "user_id")}
                             display_tenants.append(dt)
 
                         columns = [
