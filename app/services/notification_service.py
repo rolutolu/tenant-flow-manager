@@ -34,6 +34,19 @@ def send_reference_check(tenant_name: str, ref_phone: str,
         return True, f"[Simulated] SMS sent to {ref_phone}."
 
 
+def send_reference_email(tenant_name: str, ref_email: str,
+                         ref_name: str = "Reference") -> tuple[bool, str]:
+    """Simulate sending an email inquiry to a tenant reference."""
+    message_body = (
+        f"Subject: Reference Check for {tenant_name}\n"
+        f"Hello {ref_name},\n\nYou have been listed as a reference for {tenant_name}. "
+        f"Please reply to this email to confirm they were a tenant/employee in good standing. "
+        f"Thank you!"
+    )
+    print(f"[SIMULATED EMAIL to {ref_email}]:\n{message_body}")
+    return True, f"[Simulated] Email sent to {ref_email}."
+
+
 def send_nsf_notice(tenant_name: str, unit: str, amount: float,
                     penalty: float = 25.0) -> tuple[bool, str]:
     """Send a 48-hour e-transfer notice for returned payments.

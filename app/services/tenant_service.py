@@ -4,7 +4,7 @@ from app.models.database import get_client, encrypt_value, decrypt_value
 
 
 def add_tenant(user_id: str, name: str, unit: str, rent_amount: float,
-               lease_start: str = "", lease_end: str = "",
+               unit_address: str = "", lease_start: str = "", lease_end: str = "",
                bank_info: str = "", banking_set_up: str = "No",
                move_in_status: str = "Pending", lease_signed: str = "No") -> int:
     """Insert a new tenant and return their ID."""
@@ -13,6 +13,7 @@ def add_tenant(user_id: str, name: str, unit: str, rent_amount: float,
         "user_id": user_id,
         "name": name,
         "unit": unit,
+        "unit_address": unit_address,
         "rent_amount": rent_amount,
         "lease_start": lease_start,
         "lease_end": lease_end,

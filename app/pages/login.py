@@ -60,7 +60,13 @@ def login_page():
                     label="Password",
                     password=True,
                     password_toggle_button=True,
-                ).classes("w-full mb-2").props('outlined')
+                ).classes("w-full mb-1").props('outlined')
+
+                def handle_forgot_password():
+                    ui.notify("Password recovery is not fully implemented yet. Please contact your administrator.", type="warning")
+
+                with ui.row().classes("w-full justify-end mb-4"):
+                    ui.button("Forgot Password?", on_click=handle_forgot_password).props("flat dense").classes("text-sm normal-case").style(f"color: {ACCENT}")
 
                 error_label = ui.label("").classes("text-sm").style("color: #EF4444")
                 error_label.set_visibility(False)

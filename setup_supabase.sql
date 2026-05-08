@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS tenants (
     user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,
     unit            TEXT NOT NULL,
+    unit_address    TEXT,
     rent_amount     NUMERIC NOT NULL DEFAULT 0,
     lease_start     TEXT,
     lease_end       TEXT,
