@@ -1,12 +1,13 @@
 """CRUD operations for tenants using Supabase."""
 
 from app.models.database import get_client, encrypt_value, decrypt_value
+from app.services.audit_service import log_action
 
 
 def add_tenant(user_id: str, name: str, unit: str, rent_amount: float,
                unit_address: str = "", lease_start: str = "", lease_end: str = "",
                bank_info: str = "", banking_set_up: str = "No",
-               move_in_status: str = "Pending", lease_signed: str = "No") -> int:
+               move_in_status: str = "Pending", lease_signed: str = "No", unit_id: str = None) -> int:
     """Insert a new tenant and return their ID."""
     client = get_client()
     data = {
@@ -14,6 +15,7 @@ def add_tenant(user_id: str, name: str, unit: str, rent_amount: float,
         "name": name,
         "unit": unit,
         "unit_address": unit_address,
+        "unit_id": unit_id,
         "rent_amount": rent_amount,
         "lease_start": lease_start,
         "lease_end": lease_end,
@@ -23,7 +25,9 @@ def add_tenant(user_id: str, name: str, unit: str, rent_amount: float,
         "lease_signed": lease_signed,
     }
     response = client.table("tenants").insert(data).execute()
-    return response.data[0]["id"]
+    tenant_id = response.data[0]["id"]
+    log_action(user_id, "TENANT_ADDED", "tenant", tenant_id, new_value={"name": name, "unit": unit})
+    return tenant_id
 
 
 def get_all_tenants(user_id: str) -> list[dict]:
@@ -79,17 +83,25 @@ def update_tenant(tenant_id: int, **kwargs) -> bool:
         kwargs["bank_info"] = encrypt_value(kwargs["bank_info"])
     client = get_client()
     try:
+        # First get the old tenant to log what changed
+        old_data = get_tenant(tenant_id)
         client.table("tenants").update(kwargs).eq("id", tenant_id).execute()
+        if old_data:
+            log_action(old_data["user_id"], "TENANT_UPDATED", "tenant", tenant_id, old_value=old_data, new_value=kwargs)
         return True
     except Exception:
         return False
 
 
-def delete_tenant(tenant_id: int) -> bool:
+def delete_tenant(tenant_id: int, user_id: str = None) -> bool:
     """Delete a tenant by ID."""
     client = get_client()
     try:
+        # Get data before deletion for the audit log
+        old_data = get_tenant(tenant_id)
         client.table("tenants").delete().eq("id", tenant_id).execute()
+        uid = user_id or (old_data["user_id"] if old_data else "unknown")
+        log_action(uid, "TENANT_DELETED", "tenant", tenant_id, old_value=old_data)
         return True
     except Exception:
         return False

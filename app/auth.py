@@ -1,6 +1,8 @@
 """Authentication — username/password login with bcrypt + role-based access."""
 
+from typing import Callable, Any
 from functools import wraps
+import time
 import bcrypt
 from nicegui import app, ui
 from app.models.database import get_client
@@ -9,8 +11,18 @@ from app.models.database import get_client
 # ── Session Helpers ────────────────────────────────────────────────────────────
 
 def is_authenticated() -> bool:
-    """Check if the current user is authenticated."""
-    return app.storage.user.get("authenticated", False)
+    """Check if the user is currently logged in and session is active."""
+    user_id = app.storage.user.get("user_id")
+    last_activity = app.storage.user.get("last_activity", 0)
+    
+    # Check timeout
+    if time.time() - last_activity > SESSION_TIMEOUT_SECONDS:
+        app.storage.user.clear() # Force logout
+        return False
+        
+    # Update activity timestamp
+    app.storage.user["last_activity"] = time.time()
+    return bool(user_id)
 
 
 def get_current_user() -> dict:
@@ -22,8 +34,12 @@ def get_current_user() -> dict:
     }
 
 
+# Aggressive Timeout (15 minutes = 900 seconds)
+SESSION_TIMEOUT_SECONDS = 900
+
+
 def get_user_id() -> str | None:
-    """Return the current user's ID."""
+    """Get the current user's UUID from app.storage.user."""
     return app.storage.user.get("user_id")
 
 
@@ -81,18 +97,32 @@ def attempt_login(username: str, password: str) -> tuple[bool, str]:
 
     try:
         if bcrypt.checkpw(password.encode(), stored_hash):
-            app.storage.user.update({
-                "authenticated": True,
-                "user_id": user["id"],
-                "username": user["username"],
-                "role": user["role"],
-            })
+            login(user["id"], user["username"], user["role"])
             return True, "Login successful."
     except (ValueError, Exception):
         # Invalid hash in database — cannot verify
         return False, "Account error. Please contact your admin to reset your password."
 
     return False, "Invalid username or password."
+
+
+def login(user_id: str, username: str, role: str):
+    """Set the user session variables upon successful login."""
+    app.storage.user.update(
+        {
+            "user_id": user_id,
+            "username": username,
+            "role": role,
+            "last_activity": time.time(),
+            "mfa_verified": False # MFA Flag (Phase 3)
+        }
+    )
+    
+    # Simulation of MFA challenge for Admins
+    if role == "admin":
+        print(f"MFA CHALLENGE TRIGGERED for {username}")
+        # In a real setup, redirect to /mfa page. For now, simulate bypass:
+        app.storage.user["mfa_verified"] = True
 
 
 def logout():

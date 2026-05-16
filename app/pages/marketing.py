@@ -1,29 +1,44 @@
 """Marketing Dashboard — Meta Marketing API integration (Facebook & Instagram)."""
 
 from nicegui import ui
-from app.auth import require_auth
+from app.auth import require_auth, get_user_id
 from app.theme import page_layout, section_header, ACCENT, TEXT_SECONDARY, WARNING, CARD_BG, BORDER, SUCCESS
-from app.services.marketing_service import is_meta_configured, get_ads, get_account_insights
+from app.services.marketing_service import is_meta_configured, get_ads, get_account_insights, save_marketing_config
 
 
 @ui.page("/marketing")
 @require_auth
 def marketing_page():
-    configured = is_meta_configured()
+    user_id = get_user_id()
+    configured = is_meta_configured(user_id)
 
     with page_layout(title="Marketing"):
-        # ── Configuration Alert ───────────────────────────────────────────
+        # ── Configuration Alert & Form ────────────────────────────────────
         if not configured:
-            with ui.card().classes("w-full p-4 mb-4 shadow-lg border-2 border-amber-200").style(
-                "background: #FFFBEB; z-index: 101;"
-            ):
-                with ui.row().classes("items-center justify-between w-full"):
+            with ui.card().classes("w-full p-6 mb-6 shadow-lg border-2 border-amber-200").style("background: #FFFBEB;"):
+                with ui.column().classes("w-full gap-4"):
                     with ui.row().classes("items-center gap-3"):
-                        ui.icon("warning", color="warning", size="24px")
-                        with ui.column().classes("gap-0"):
-                            ui.label("API Keys Required").classes("font-bold text-amber-900")
-                            ui.label("Add META_ACCESS_TOKEN to your .env file to view live listings.").classes("text-sm text-amber-800")
-                    ui.button("How to Setup", on_click=lambda: ui.navigate.to("https://developers.facebook.com/")).props("flat color=warning")
+                        ui.icon("settings", color="warning", size="32px")
+                        ui.label("Meta API Setup Required").classes("text-xl font-bold text-amber-900")
+                    
+                    ui.label("Connect your Facebook Ad Account to track your property listings and performance metrics.").classes("text-amber-800")
+                    
+                    with ui.row().classes("w-full gap-4 flex-wrap"):
+                        token_input = ui.input(label="Meta Access Token").classes("flex-1 min-w-[300px]").props("outlined password password-toggle-button")
+                        acc_id_input = ui.input(label="Ad Account ID (act_...)").classes("flex-1 min-w-[200px]").props("outlined")
+                    
+                    async def handle_save_config():
+                        if not token_input.value or not acc_id_input.value:
+                            ui.notify("Both fields are required", type="warning")
+                            return
+                        if save_marketing_config(user_id, token_input.value, acc_id_input.value):
+                            ui.notify("Meta configuration saved successfully!", type="positive")
+                            ui.navigate.to("/marketing") # Refresh
+                        else:
+                            ui.notify("Failed to save configuration", type="negative")
+
+                    ui.button("Save & Connect", on_click=handle_save_config, icon="bolt").props("unelevated color=warning rounded")
+                    ui.label("Don't have these? Visit the Meta for Developers portal.").classes("text-xs text-amber-700")
 
         section_header("Marketing & Advertising", "Manage your Meta (Facebook & Instagram) property listings")
 
@@ -59,7 +74,7 @@ def marketing_page():
                                 for _ in range(3): _placeholder_listing()
                             return
 
-                        success, ads, err = get_ads()
+                        success, ads, err = get_ads(user_id)
                         with listings_grid:
                             if success and ads:
                                 for ad in ads:
@@ -78,7 +93,7 @@ def marketing_page():
                             ui.icon("facebook", color="blue-8", size="32px")
                             ui.label("Facebook Performance").classes("text-lg font-semibold")
 
-                        insights = get_account_insights()[1] if configured else {}
+                        insights = get_account_insights(user_id)[1] if configured else {}
                         _mini_stat("Reach", insights.get("reach", "0"), "groups")
                         _mini_stat("Spend", f"${insights.get('spend', '0.00')}", "payments")
 

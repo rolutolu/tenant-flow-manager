@@ -1,0 +1,8 @@
+Property,Unit,Tenant Name,Monthly Rent
+Sunset Apartments,101,Alice Johnson,1500
+Sunset Apartments,102,Bob Smith,1550
+Sunset Apartments,103,,1600
+Oceanview Complex,A1,Charlie Davis,2000
+Oceanview Complex,B2,Diana Prince,2100
+Oceanview Complex,C3,Edward Elric,invalid_number
+,,Ghost Tenant,999

@@ -6,6 +6,7 @@ from app.theme import page_layout, section_header, ACCENT, SUCCESS, CARD_BG, BOR
 from app.services.tenant_service import add_tenant
 from app.services.document_service import save_uploaded_file
 from app.services.notification_service import send_reference_check, send_reference_email
+from app.services.property_service import get_properties, get_units_by_property
 
 
 @ui.page("/intake")
@@ -23,14 +24,40 @@ def intake_page():
                 ui.label("Enter the prospective tenant's details").classes("text-sm mb-3").style(
                     f"color: {TEXT_SECONDARY}"
                 )
+                
+                # State for dropdowns
+                properties = get_properties(user_id)
+                prop_options = {p["id"]: p["name"] for p in properties}
+                unit_options = {}
+
                 with ui.row().classes("w-full gap-4 flex-wrap"):
                     name_input = ui.input(label="Full Name").classes("flex-1 min-w-[250px]").props("outlined")
-                    unit_input = ui.input(label="Unit Number").classes("flex-1 min-w-[250px]").props("outlined")
+                    
+                    def on_prop_change(e):
+                        if e.value:
+                            units = get_units_by_property(e.value)
+                            vacant_units = {u["id"]: f"Unit {u['unit_number']} (${u['default_rent']})" for u in units if u["status"] in ["Vacant", "Notice"]}
+                            unit_select.options = vacant_units
+                            unit_select.value = None
+                        else:
+                            unit_select.options = {}
+                    
+                    prop_select = ui.select(label="Property", options=prop_options, on_change=on_prop_change).classes("flex-1 min-w-[250px]").props("outlined")
+
                 with ui.row().classes("w-full gap-4 flex-wrap"):
-                    unit_address_input = ui.input(label="Unit Address").classes("flex-1 min-w-[250px]").props("outlined")
-                    rent_input = ui.number(label="Monthly Rent ($)", value=1500, min=100, step=50).classes(
+                    unit_select = ui.select(label="Available Unit", options=unit_options).classes("flex-1 min-w-[250px]").props("outlined")
+                    rent_input = ui.number(label="Agreed Rent ($)", value=0, min=0, step=50).classes(
                         "flex-1 min-w-[250px]"
                     ).props("outlined")
+                    
+                    def on_unit_change(e):
+                        if e.value:
+                            # Auto-fill default rent
+                            selected_unit = next((u for p in properties for u in get_units_by_property(p["id"]) if u["id"] == e.value), None)
+                            if selected_unit:
+                                rent_input.value = selected_unit["default_rent"]
+                    
+                    unit_select.on_value_change(on_unit_change)
 
                 with ui.stepper_navigation():
                     ui.button("Next", on_click=stepper.next, icon="arrow_forward").props("unelevated rounded")
@@ -173,22 +200,25 @@ def intake_page():
                 result_area = ui.column().classes("w-full gap-2")
 
                 def save_tenant():
-                    if not name_input.value or not unit_input.value:
+                    if not name_input.value or not unit_select.value:
                         ui.notify("Name and Unit are required", type="warning")
                         return
+
+                    # Get unit text for legacy compat and UI updates
+                    unit_text = unit_select.options.get(unit_select.value, "Unknown").split(" ")[1] if unit_select.value else "Unknown"
 
                     # Save tenant to database with user_id
                     try:
                         tenant_id = add_tenant(
                             user_id=user_id,
                             name=name_input.value,
-                            unit=unit_input.value,
-                            unit_address=unit_address_input.value,
+                            unit=unit_text,
+                            unit_id=unit_select.value,
                             rent_amount=rent_input.value or 0,
                         )
                     except Exception as e:
                         if "duplicate key" in str(e).lower():
-                            ui.notify(f"Unit {unit_input.value} is already occupied or registered.", type="negative")
+                            ui.notify(f"Unit {unit_text} is already occupied or registered.", type="negative")
                         else:
                             ui.notify(f"Database error: {str(e)}", type="negative")
                         return
@@ -203,7 +233,7 @@ def intake_page():
                             save_uploaded_file(
                                 tenant_id=tenant_id,
                                 tenant_name=name_input.value,
-                                unit=unit_input.value,
+                                unit=unit_text,
                                 filename=file_data["name"],
                                 content=file_data["content"],
                                 doc_type=doc_type,
@@ -215,7 +245,7 @@ def intake_page():
                     with result_area:
                         result_area.clear()
                         ui.icon("check_circle", size="48px").style(f"color: {SUCCESS}")
-                        ui.label(f"Tenant '{name_input.value}' saved to Unit {unit_input.value}!").classes(
+                        ui.label(f"Tenant '{name_input.value}' saved to Unit {unit_text}!").classes(
                             "text-lg font-semibold"
                         )
                         ui.label(f"{saved_count} document(s) uploaded and stored securely.").classes(

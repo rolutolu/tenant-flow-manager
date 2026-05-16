@@ -10,7 +10,15 @@ from app.auth import ensure_admin_exists
 ensure_admin_exists()
 
 # Import all page modules so their @ui.page decorators register routes
-from app.pages import login, dashboard, intake, lease, finance, actions, marketing, admin  # noqa: E402, F401
+from app.pages.login import login_page
+from app.pages.dashboard import dashboard_page
+from app.pages.intake import intake_page
+from app.pages.lease import lease_page
+from app.pages.marketing import marketing_page
+from app.pages.properties import properties_page
+from app.pages.import_data import import_page
+from app.pages.finance import finance_page
+from app.pages.maintenance import maintenance_page
 
 from nicegui import ui  # noqa: E402
 from app.config import APP_TITLE, APP_HOST, APP_PORT  # noqa: E402
