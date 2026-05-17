@@ -3,6 +3,7 @@ from nicegui import ui
 from app.auth import require_role, get_user_id
 from app.theme import page_layout, section_header, ACCENT, TEXT_SECONDARY, CARD_BG, BORDER
 from app.services.property_service import get_properties, add_property, get_units_by_property, add_unit, update_unit_status
+from app.services.tenant_service import get_all_tenants
 
 @ui.page("/properties")
 @require_role("admin", "manager")
@@ -13,6 +14,9 @@ def properties_page():
         section_header("Property Management", "Manage your buildings, complexes, and individual units")
         
         properties = get_properties(user_id)
+        tenants = get_all_tenants(user_id)
+        # Create lookup map: {unit_id: tenant_name}
+        tenant_lookup = {t["unit_id"]: t["name"] for t in tenants if t.get("unit_id")}
         
         # ── Add Property Modal ──────────────────────────────────────────────
         with ui.dialog() as add_prop_dialog, ui.card().classes("w-96 p-6"):
@@ -95,4 +99,10 @@ def properties_page():
                                     with ui.card().classes("p-3 min-w-[120px] items-center text-center border shadow-none"):
                                         ui.label(u["unit_number"]).classes("font-bold text-lg")
                                         ui.badge(u["status"], color=status_color).classes("text-[10px]")
+                                        
+                                        # Display active tenant if occupied
+                                        t_name = tenant_lookup.get(u["id"])
+                                        if t_name and u["status"] == "Occupied":
+                                            ui.label(t_name).classes("text-xs font-semibold text-indigo-600 mt-1 truncate max-w-[100px]")
+                                            
                                         ui.label(f"${u['default_rent']}/mo").classes("text-xs text-slate-500 mt-1")
