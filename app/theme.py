@@ -119,11 +119,14 @@ def _get_nav_items() -> list[dict]:
     role = app.storage.user.get("role", "viewer")
     items = [
         {"label": "Dashboard",  "icon": "dashboard",            "path": "/",          "roles": ["admin", "manager", "viewer"]},
+        {"label": "Properties", "icon": "business",             "path": "/properties","roles": ["admin", "manager"]},
         {"label": "Intake",     "icon": "person_add",           "path": "/intake",    "roles": ["admin", "manager"]},
         {"label": "Leases",     "icon": "description",          "path": "/lease",     "roles": ["admin", "manager"]},
-        {"label": "Finance",    "icon": "account_balance",      "path": "/finance",   "roles": ["admin"]},
+        {"label": "Finance",    "icon": "account_balance",      "path": "/finance",   "roles": ["admin", "manager"]},
+        {"label": "Maintenance","icon": "build",                "path": "/maintenance","roles": ["admin", "manager"]},
         {"label": "Actions",    "icon": "notifications_active", "path": "/actions",   "roles": ["admin", "manager", "viewer"]},
         {"label": "Marketing",  "icon": "campaign",             "path": "/marketing", "roles": ["admin", "manager", "viewer"]},
+        {"label": "Import Data","icon": "upload_file",          "path": "/import",    "roles": ["admin", "manager"]},
         {"label": "Admin",      "icon": "admin_panel_settings",  "path": "/admin",     "roles": ["admin"]},
     ]
     return [item for item in items if role in item["roles"]]

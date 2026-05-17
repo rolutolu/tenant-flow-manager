@@ -20,6 +20,7 @@ from app.pages.import_data import import_page
 from app.pages.finance import finance_page
 from app.pages.maintenance import maintenance_page
 from app.pages.actions import actions_page
+from app.pages.admin import admin_page
 
 from nicegui import ui  # noqa: E402
 from app.config import APP_TITLE, APP_HOST, APP_PORT, STORAGE_SECRET  # noqa: E402
