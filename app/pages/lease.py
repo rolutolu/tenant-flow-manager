@@ -6,6 +6,7 @@ from app.theme import page_layout, section_header, ACCENT, SUCCESS, WARNING, TEX
 from app.services.tenant_service import get_all_tenants, delete_tenant
 from app.services.lease_service import generate_lease_pdf
 from app.services.document_service import list_all_document_folders, get_signed_url
+from app.services.property_service import get_properties, get_units_by_property
 from app.models.database import get_client
 
 
@@ -82,15 +83,61 @@ def lease_page():
                         ui.icon("description", size="24px", color="primary")
                     ui.label("Generate Lease").classes("text-lg font-semibold")
 
-                t_name = ui.input(label="Tenant Name").classes("w-full").props("outlined")
-                t_unit = ui.input(label="Unit Number").classes("w-full").props("outlined")
-                t_rent = ui.number(label="Rent", value=1500).classes("w-full").props("outlined")
+                # Load properties for selection
+                properties_list = get_properties(user_id)
+                prop_options = {p["id"]: p["name"] for p in properties_list}
                 
+                t_name = ui.input(label="Tenant Name").classes("w-full").props("outlined")
+                
+                # Dynamic Property and Unit Selector
+                prop_selector = ui.select(
+                    label="Property",
+                    options=prop_options,
+                    on_change=lambda e: update_units(e.value)
+                ).classes("w-full").props("outlined")
+                
+                unit_selector = ui.select(
+                    label="Unit",
+                    options={},
+                    on_change=lambda e: update_rent(e.value)
+                ).classes("w-full").props("outlined")
+                
+                t_rent = ui.number(label="Rent ($)", value=0).classes("w-full").props("outlined")
+                
+                # Cache unit objects to fetch rents easily
+                unit_cache = {}
+                
+                def update_units(prop_id):
+                    if not prop_id:
+                        unit_selector.options = {}
+                        return
+                    units = get_units_by_property(prop_id)
+                    # Update cache
+                    for u in units:
+                        unit_cache[u["id"]] = u
+                    unit_selector.options = {u["id"]: u["unit_number"] for u in units}
+                    unit_selector.value = None
+                    t_rent.value = 0
+                    
+                def update_rent(unit_id):
+                    if unit_id in unit_cache:
+                        t_rent.value = unit_cache[unit_id]["default_rent"]
+
                 def on_gen():
-                    if not t_name.value or not t_unit.value:
-                        return ui.notify("Missing data", type="warning")
+                    if not t_name.value or not prop_selector.value or not unit_selector.value:
+                        return ui.notify("Tenant Name, Property, and Unit are required", type="warning")
                     try:
-                        generate_lease_pdf(t_name.value, t_unit.value, t_rent.value or 0, "TBD", "TBD")
+                        prop_name = prop_options[prop_selector.value]
+                        unit_number = unit_selector.options[unit_selector.value]
+                        
+                        generate_lease_pdf(
+                            tenant_name=t_name.value,
+                            unit=unit_number,
+                            rent_amount=t_rent.value or 0,
+                            start_date="TBD",
+                            end_date="TBD",
+                            property_name=prop_name
+                        )
                         ui.notify("Lease generated!", type="positive")
                         folder_selector.options = list_all_document_folders()
                     except Exception as ex:

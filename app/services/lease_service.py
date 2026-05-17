@@ -8,7 +8,7 @@ from app.models.database import get_client
 
 
 def generate_lease_pdf(tenant_name: str, unit: str, rent_amount: float,
-                       start_date: str, end_date: str) -> str:
+                       start_date: str, end_date: str, property_name: str = "") -> str:
     """Generate a PDF lease agreement and return the cloud path."""
     pdf = FPDF()
     pdf.add_page()
@@ -25,11 +25,12 @@ def generate_lease_pdf(tenant_name: str, unit: str, rent_amount: float,
 
     # Body
     pdf.set_font("Arial", size=12)
+    prop_str = f"Unit {unit} in Property: {property_name}" if property_name else f"Unit {unit}"
     body = (
         f"This Lease Agreement is entered into between the Landlord and "
         f"{tenant_name} (hereinafter referred to as the 'Tenant').\n\n"
         f"1. PROPERTY: The Landlord agrees to rent the premises located at "
-        f"Unit {unit} to the Tenant.\n\n"
+        f"{prop_str} to the Tenant.\n\n"
         f"2. TERM: The lease shall commence on {start_date} and terminate on "
         f"{end_date}.\n\n"
         f"3. RENT: The Tenant agrees to pay a monthly rent of ${rent_amount:,.2f}, "
