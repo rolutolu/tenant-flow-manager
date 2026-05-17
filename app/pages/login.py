@@ -32,10 +32,10 @@ def login_page():
                     "box-shadow: 0 8px 32px rgba(99, 102, 241, 0.35);"
                 ):
                     ui.icon("apartment", size="44px").classes("text-white")
-                ui.label("Tenant Flow Manager").classes(
-                    "text-2xl font-bold tracking-wide text-white"
+                ui.label("Virix").classes(
+                    "text-3xl font-bold tracking-wider text-white uppercase"
                 )
-                ui.label("Property Management System").classes("text-sm").style(
+                ui.label("Property Management Suite").classes("text-sm").style(
                     "color: #94A3B8"
                 )
 

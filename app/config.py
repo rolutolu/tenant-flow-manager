@@ -32,7 +32,7 @@ META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN", "")
 META_AD_ACCOUNT_ID = os.getenv("META_AD_ACCOUNT_ID", "")
 
 # ── App ────────────────────────────────────────────────────────────────────────
-APP_TITLE = "Tenant Flow Manager"
+APP_TITLE = "Virix"
 APP_HOST = os.getenv("HOST", "0.0.0.0")
 # Railway and Render provide the PORT as an environment variable
 APP_PORT = int(os.getenv("PORT", 8080))

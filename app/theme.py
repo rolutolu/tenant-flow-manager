@@ -155,11 +155,11 @@ def page_layout(title: str = ""):
             ):
                 ui.icon("apartment", size="22px").classes("text-white")
             with ui.column().classes("gap-0"):
-                ui.label("Tenant Flow").classes(
-                    "text-white text-lg font-bold tracking-wide leading-tight"
+                ui.label("Virix").classes(
+                    "text-white text-lg font-bold tracking-wide leading-tight uppercase"
                 )
-                ui.label("Manager").classes(
-                    "text-slate-400 text-xs font-medium tracking-widest uppercase leading-tight"
+                ui.label("Property Suite").classes(
+                    "text-slate-400 text-[10px] font-semibold tracking-widest uppercase leading-tight"
                 )
 
         with ui.row().classes("items-center gap-3"):

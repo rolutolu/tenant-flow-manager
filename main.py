@@ -1,4 +1,4 @@
-"""Tenant Flow Manager — Main Entry Point
+"""Virix — Main Entry Point
 
 A property management application built with NiceGUI + Supabase.
 Run with:  python main.py

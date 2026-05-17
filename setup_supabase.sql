@@ -1,8 +1,6 @@
 -- ============================================================================
--- Tenant Flow Manager — Supabase Schema Setup
+-- Virix — Supabase Schema Setup
 -- Run this in your Supabase SQL Editor:
---   https://supabase.com/dashboard/project/hvyhnlqxlrzqifcbvhkp/sql/new
--- ============================================================================
 
 -- Users table for authentication
 CREATE TABLE IF NOT EXISTS users (

@@ -16,7 +16,7 @@ from supabase import create_client
 
 def main():
     print("=" * 60)
-    print("Tenant Flow Manager -- Database Setup")
+    print("Virix -- Database Setup")
     print("=" * 60)
 
     if not SUPABASE_URL or not SUPABASE_KEY:
