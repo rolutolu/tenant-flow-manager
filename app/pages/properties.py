@@ -44,6 +44,9 @@ def properties_page():
             def save_unit():
                 if not u_num.value:
                     return ui.notify("Unit number is required", type="warning")
+                # Bug fix #8: Guard against null property_id
+                if not selected_prop_id_for_unit["id"]:
+                    return ui.notify("No property selected. Please add a property first.", type="negative")
                 if add_unit(user_id, selected_prop_id_for_unit["id"], u_num.value, u_rent.value):
                     ui.notify("Unit added!", type="positive")
                     add_unit_dialog.close()

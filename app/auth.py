@@ -10,6 +10,10 @@ from app.models.database import get_client
 
 # ── Session Helpers ────────────────────────────────────────────────────────────
 
+# Bug fix #2: Must be defined BEFORE is_authenticated() uses it
+SESSION_TIMEOUT_SECONDS = 900  # 15 minutes
+
+
 def is_authenticated() -> bool:
     """Check if the user is currently logged in and session is active."""
     user_id = app.storage.user.get("user_id")
@@ -17,10 +21,10 @@ def is_authenticated() -> bool:
     
     # Check timeout
     if time.time() - last_activity > SESSION_TIMEOUT_SECONDS:
-        app.storage.user.clear() # Force logout
+        app.storage.user.clear()  # Force logout
         return False
         
-    # Update activity timestamp
+    # Update activity timestamp on every valid request
     app.storage.user["last_activity"] = time.time()
     return bool(user_id)
 
@@ -34,8 +38,7 @@ def get_current_user() -> dict:
     }
 
 
-# Aggressive Timeout (15 minutes = 900 seconds)
-SESSION_TIMEOUT_SECONDS = 900
+# (Moved SESSION_TIMEOUT_SECONDS to the top of the block above)
 
 
 def get_user_id() -> str | None:
@@ -127,12 +130,8 @@ def login(user_id: str, username: str, role: str):
 
 def logout():
     """Clear auth state and redirect to login."""
-    app.storage.user.update({
-        "authenticated": False,
-        "user_id": None,
-        "username": None,
-        "role": None,
-    })
+    # Bug fix #3: Use clear() to remove ALL session keys cleanly
+    app.storage.user.clear()
     ui.navigate.to("/login")
 
 

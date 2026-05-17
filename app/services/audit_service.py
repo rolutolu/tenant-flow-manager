@@ -10,8 +10,9 @@ def log_action(user_id: str, action: str, entity_type: str, entity_id: str, old_
         "action": action,
         "entity_type": entity_type,
         "entity_id": str(entity_id),
-        "old_value": old_value or {},
-        "new_value": new_value or {}
+        # Bug fix #10: Store None/null rather than {} for missing values
+        "old_value": old_value,
+        "new_value": new_value
     }
     try:
         client.table("audit_logs").insert(data).execute()

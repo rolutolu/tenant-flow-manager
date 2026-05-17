@@ -21,14 +21,14 @@ from app.pages.finance import finance_page
 from app.pages.maintenance import maintenance_page
 
 from nicegui import ui  # noqa: E402
-from app.config import APP_TITLE, APP_HOST, APP_PORT  # noqa: E402
+from app.config import APP_TITLE, APP_HOST, APP_PORT, STORAGE_SECRET  # noqa: E402
 
 ui.run(
     title=APP_TITLE,
     host=APP_HOST,
     port=APP_PORT,
     dark=False,
-    storage_secret="tenant-flow-manager-secret-key-change-me",
+    storage_secret=STORAGE_SECRET,
     reload=True,
     show_welcome_message=False,
 )

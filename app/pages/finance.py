@@ -37,13 +37,13 @@ def finance_page():
                 ui.button("Scan Bank Emails (AI)", icon="smart_toy", on_click=lambda: ui.notify("AI Scraper Simulation: Found 2 new E-Transfers. Adding to ledger...", type="info")).props("unelevated color=indigo")
                 
                 def export_csv():
-                    transactions = get_transactions(user_id)
-                    df = pd.DataFrame(transactions)
-                    # Clean up nested dicts for CSV
-                    if not df.empty:
+                    txns = get_transactions(user_id)
+                    df = pd.DataFrame(txns)
+                    # Bug fix #9: Guard against empty dataframe before accessing columns
+                    if not df.empty and "tenants" in df.columns and "units" in df.columns:
                         df["Tenant"] = df["tenants"].apply(lambda x: x.get("name") if isinstance(x, dict) else "")
                         df["Unit"] = df["units"].apply(lambda x: x.get("unit_number") if isinstance(x, dict) else "")
-                        df = df.drop(columns=["tenants", "units"])
+                        df = df.drop(columns=["tenants", "units"], errors="ignore")
                     
                     csv_data = df.to_csv(index=False)
                     ui.download(csv_data.encode("utf-8"), f"financials_{datetime.now().strftime('%Y%m%d')}.csv")
@@ -72,13 +72,22 @@ def finance_page():
         if not transactions:
             ui.label("No transactions found.").classes("text-slate-500 italic mt-4")
         else:
+            # Bug fix #5: Flatten nested dicts from Supabase join before passing to ui.table
+            flat_transactions = []
+            for t in transactions:
+                flat = dict(t)
+                flat["tenant_name"] = (t.get("tenants") or {}).get("name", "N/A")
+                flat["unit_label"] = (t.get("units") or {}).get("unit_number", "N/A")
+                flat_transactions.append(flat)
+
             columns = [
                 {'name': 'date', 'label': 'Date', 'field': 'date', 'sortable': True, 'align': 'left'},
                 {'name': 'type', 'label': 'Type', 'field': 'type', 'sortable': True, 'align': 'left'},
                 {'name': 'category', 'label': 'Category', 'field': 'category', 'align': 'left'},
-                {'name': 'tenant', 'label': 'Tenant', 'field': lambda row: row['tenants']['name'] if row.get('tenants') else 'N/A', 'align': 'left'},
+                {'name': 'tenant', 'label': 'Tenant', 'field': 'tenant_name', 'align': 'left'},
+                {'name': 'unit', 'label': 'Unit', 'field': 'unit_label', 'align': 'left'},
                 {'name': 'amount', 'label': 'Amount', 'field': 'amount', 'sortable': True, 'align': 'right'},
                 {'name': 'status', 'label': 'Status', 'field': 'status', 'align': 'center'}
             ]
-            
-            ui.table(columns=columns, rows=transactions, row_key='id').classes('w-full shadow-sm').style(f"border: 1px solid {BORDER}")
+
+            ui.table(columns=columns, rows=flat_transactions, row_key='id').classes('w-full shadow-sm').style(f"border: 1px solid {BORDER}")

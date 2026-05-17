@@ -29,11 +29,30 @@ def add_transaction(user_id: str, type: str, category: str, amount: float, tenan
         return None
 
 def get_financial_summary(user_id: str) -> dict:
-    """Calculate total income, pending charges, etc."""
+    """Calculate total income, outstanding charges, etc."""
     transactions = get_transactions(user_id, limit=1000)
     income = sum(t["amount"] for t in transactions if t["type"] == "Payment" and t["status"] == "Cleared")
-    outstanding = sum(t["amount"] for t in transactions if t["type"] == "Charge" and t["status"] == "Cleared")
+    # Bug fix #4: Only count Pending charges as outstanding, not all charges
+    outstanding = sum(t["amount"] for t in transactions if t["type"] == "Charge" and t["status"] == "Pending")
     return {"total_income": income, "outstanding_charges": outstanding}
+
+
+# Bug fix #1: Dashboard imports this name — must match exactly
+def get_revenue_summary(user_id: str) -> dict:
+    """Alias for dashboard compatibility. Returns income, outstanding, and chart-ready data."""
+    base = get_financial_summary(user_id)
+    transactions = get_transactions(user_id, limit=1000)
+    # For the revenue chart on the dashboard
+    pad_total = sum(t["amount"] for t in transactions if t["type"] == "Payment" and t.get("notes", "") == "PAD")
+    etransfer_total = sum(t["amount"] for t in transactions if t["type"] == "Payment" and t.get("notes", "") == "E-Transfer")
+    return {
+        "total": base["total_income"],
+        "outstanding": base["outstanding_charges"],
+        "PAD": pad_total,
+        "E-Transfer": etransfer_total,
+        "pad_count": sum(1 for t in transactions if t["type"] == "Payment" and t.get("notes", "") == "PAD"),
+        "etransfer_count": sum(1 for t in transactions if t["type"] == "Payment" and t.get("notes", "") == "E-Transfer"),
+    }
 
 # Stripe Integration Stubs
 def create_checkout_session(amount: float, description: str, success_url: str, cancel_url: str) -> str:

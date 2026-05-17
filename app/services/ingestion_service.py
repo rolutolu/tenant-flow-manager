@@ -42,11 +42,14 @@ def process_bulk_import(user_id: str, df: pd.DataFrame, mapping: dict) -> tuple[
         p_name = str(row[prop_col]).strip()
         u_name = str(row[unit_col]).strip()
         t_name = str(row[tenant_col]).strip()
-        rent_val = row[rent_col] if rent_col and row[rent_col] else 0
-        try:
-            rent_val = float(rent_val)
-        except ValueError:
-            rent_val = 0.0
+        # Bug fix #6: Must check rent_col is not None before accessing row data
+        rent_val = 0.0
+        if rent_col is not None:
+            raw_rent = row.get(rent_col, 0)
+            try:
+                rent_val = float(raw_rent) if raw_rent != "" else 0.0
+            except (ValueError, TypeError):
+                rent_val = 0.0
 
         if not p_name or not u_name or not t_name:
             continue
