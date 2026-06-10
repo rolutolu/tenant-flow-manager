@@ -188,6 +188,19 @@ def get_all_users() -> list[dict]:
     return response.data or []
 
 
+def reset_user_password(user_id: str, new_password: str) -> tuple[bool, str]:
+    """Reset a user's password (admin-only operation)."""
+    if not new_password:
+        return False, "New password is required."
+    client = get_client()
+    try:
+        hashed = hash_password(new_password)
+        client.table("users").update({"password": hashed}).eq("id", user_id).execute()
+        return True, "Password reset successfully."
+    except Exception as e:
+        return False, f"Failed to reset password: {str(e)}"
+
+
 def delete_user(user_id: str) -> tuple[bool, str]:
     """Delete a user by ID."""
     client = get_client()

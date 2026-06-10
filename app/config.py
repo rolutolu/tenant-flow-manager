@@ -31,6 +31,12 @@ TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "")
 META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN", "")
 META_AD_ACCOUNT_ID = os.getenv("META_AD_ACCOUNT_ID", "")
 
+# ── Amazon SES (email delivery) ───────────────────────────────────────────────
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+SES_FROM_EMAIL = os.getenv("SES_FROM_EMAIL", "")
+
 # ── App ────────────────────────────────────────────────────────────────────────
 APP_TITLE = "Virix"
 APP_HOST = os.getenv("HOST", "0.0.0.0")

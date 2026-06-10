@@ -2,10 +2,14 @@
 
 from nicegui import ui
 from app.auth import require_auth, get_user_id, get_user_role
-from app.theme import (page_layout, section_header, metric_card,
-                        ACCENT, SUCCESS, WARNING, DANGER, TEXT_SECONDARY, CARD_BG, BORDER, TEXT_PRIMARY)
-from app.services.tenant_service import get_all_tenants, get_tenant_count, get_pending_signatures_count
+from app.theme import (
+    page_layout, section_header, metric_card,
+    ACCENT, SUCCESS, WARNING, TEXT_SECONDARY, CARD_BG, BORDER,
+)
+from app.services.tenant_service import get_all_tenants, get_tenant_count, get_pending_signatures_count, update_tenant
 from app.services.lease_service import get_expiring_leases, generate_rent_increase_notice
+from app.services.notification_service import send_rent_increase_email
+from app.components.tenant_edit_dialog import open_tenant_edit_dialog
 
 
 @ui.page("/actions")
@@ -13,14 +17,16 @@ from app.services.lease_service import get_expiring_leases, generate_rent_increa
 def actions_page():
     user_id = get_user_id()
     role = get_user_role()
+    notice_paths = {}
 
     with page_layout(title="Action Center"):
-        section_header("Action Center & Compliance",
-                       "Proactively manage lease expirations and rent increase notices")
+        section_header(
+            "Action Center & Compliance",
+            "Proactively manage lease expirations and rent increase notices",
+        )
 
         with ui.row().classes("w-full gap-6 flex-wrap items-start"):
 
-            # ── Left: Lease Expiration Scanner ─────────────────────────────
             with ui.card().classes("p-6 rounded-2xl shadow-sm flex-1 min-w-[400px]").style(
                 f"background: {CARD_BG}; border: 1px solid {BORDER}"
             ):
@@ -54,16 +60,15 @@ def actions_page():
                                 ).classes("w-full").props("dense"):
                                     with ui.column().classes("gap-2 p-3"):
                                         ui.label(f"Lease End: {tenant['lease_end']}").classes("text-sm")
-                                        ui.label(
-                                            f"Current Rent: ${tenant['rent_amount']:,.2f}"
-                                        ).classes("text-sm")
+                                        ui.label(f"Current Rent: ${tenant['rent_amount']:,.2f}").classes("text-sm")
 
                                         if role in ("admin", "manager"):
-                                            with ui.row().classes("gap-2"):
+                                            with ui.row().classes("gap-2 flex-wrap"):
                                                 new_rent = ui.number(
                                                     label="New Rent ($)",
                                                     value=tenant["rent_amount"] * 1.03,
-                                                    min=0, step=25
+                                                    min=0,
+                                                    step=25,
                                                 ).classes("w-40").props("outlined dense")
 
                                                 def draft_notice(t=tenant, nr=new_rent):
@@ -75,18 +80,45 @@ def actions_page():
                                                             new_rent=nr.value,
                                                             effective_date=t["lease_end"],
                                                         )
-                                                        ui.notify(
-                                                            f"Notice generated: {path}",
-                                                            type="positive"
-                                                        )
+                                                        notice_paths[t["id"]] = path
+                                                        ui.notify(f"Notice generated: {path}", type="positive")
                                                     except Exception as e:
                                                         ui.notify(f"Error: {str(e)}", type="negative")
+
+                                                def send_notice(t=tenant, nr=new_rent):
+                                                    path = notice_paths.get(t["id"])
+                                                    if not path:
+                                                        return ui.notify("Draft the notice first", type="warning")
+                                                    if not t.get("email"):
+                                                        return ui.notify(
+                                                            "Tenant email required. Use Edit on tenant table.",
+                                                            type="warning",
+                                                        )
+                                                    success, msg = send_rent_increase_email(
+                                                        t["name"], t["email"], path, user_id=user_id
+                                                    )
+                                                    ui.notify(msg, type="positive" if success else "negative")
+
+                                                def send_and_update(t=tenant, nr=new_rent):
+                                                    send_notice(t, nr)
+                                                    if update_tenant(t["id"], rent_amount=nr.value):
+                                                        ui.notify("Rent amount updated in database", type="info")
 
                                                 ui.button(
                                                     "Draft Notice",
                                                     on_click=draft_notice,
                                                     icon="drafts",
                                                 ).props("unelevated size=sm rounded")
+                                                ui.button(
+                                                    "Send Notice",
+                                                    on_click=send_notice,
+                                                    icon="email",
+                                                ).props("outline size=sm rounded")
+                                                ui.button(
+                                                    "Send & Update Rent",
+                                                    on_click=send_and_update,
+                                                    icon="send",
+                                                ).props("outline size=sm rounded color=positive")
                         else:
                             with ui.row().classes("items-center gap-2"):
                                 ui.icon("check_circle", size="24px").style(f"color: {SUCCESS}")
@@ -100,7 +132,6 @@ def actions_page():
                     icon="radar",
                 ).classes("w-full").props("unelevated rounded")
 
-            # ── Right: System Overview ─────────────────────────────────────
             with ui.column().classes("gap-4 flex-1 min-w-[300px]"):
                 with ui.card().classes("p-6 rounded-2xl shadow-sm w-full").style(
                     f"background: {CARD_BG}; border: 1px solid {BORDER}"
@@ -114,10 +145,13 @@ def actions_page():
 
                     with ui.column().classes("gap-3 w-full"):
                         metric_card("Total Active Tenants", get_tenant_count(user_id), "people", ACCENT)
-                        metric_card("Pending Signatures", get_pending_signatures_count(user_id),
-                                    "edit_note", WARNING)
+                        metric_card(
+                            "Pending Signatures",
+                            get_pending_signatures_count(user_id),
+                            "edit_note",
+                            WARNING,
+                        )
 
-                # ── Tenant Database ────────────────────────────────────────
                 with ui.card().classes("p-6 rounded-2xl shadow-sm w-full").style(
                     f"background: {CARD_BG}; border: 1px solid {BORDER}"
                 ):
@@ -130,7 +164,6 @@ def actions_page():
 
                     tenants = get_all_tenants(user_id)
                     if tenants:
-                        # Hide sensitive bank_info from the display
                         display_tenants = []
                         for t in tenants:
                             dt = {k: v for k, v in t.items() if k not in ("bank_info", "user_id")}
@@ -142,12 +175,21 @@ def actions_page():
                             {"name": "rent_amount", "label": "Rent", "field": "rent_amount", "align": "right"},
                             {"name": "lease_signed", "label": "Signed", "field": "lease_signed", "align": "center"},
                             {"name": "banking_set_up", "label": "Banking", "field": "banking_set_up", "align": "center"},
+                            {"name": "actions", "label": "", "field": "actions", "align": "center"},
                         ]
-                        ui.table(
-                            columns=columns,
-                            rows=display_tenants,
-                        ).classes("w-full").props("flat bordered dense")
-                    else:
-                        ui.label("No tenants yet.").classes("text-sm").style(
-                            f"color: {TEXT_SECONDARY}"
+
+                        def handle_edit(e):
+                            open_tenant_edit_dialog(e.args, on_saved=lambda: ui.navigate.to("/actions"))
+
+                        tbl = ui.table(columns=columns, rows=display_tenants).classes("w-full").props(
+                            "flat bordered dense"
                         )
+                        tbl.add_slot("body-cell-actions", """
+                            <q-td :props="props">
+                                <q-btn flat round color="primary" icon="edit"
+                                       @click="$parent.$emit('edit_row', props.row)" />
+                            </q-td>
+                        """)
+                        tbl.on("edit_row", handle_edit)
+                    else:
+                        ui.label("No tenants yet.").classes("text-sm").style(f"color: {TEXT_SECONDARY}")

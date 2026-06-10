@@ -71,6 +71,16 @@ def delete_document(doc_id: int, filepath: str):
         return False
 
 
+def get_document_by_filepath(filepath: str) -> dict | None:
+    """Look up a document record by its storage path."""
+    client = get_client()
+    try:
+        resp = client.table("documents").select("*").eq("filepath", filepath).limit(1).execute()
+        return resp.data[0] if resp.data else None
+    except Exception:
+        return None
+
+
 def list_all_document_folders() -> list[str]:
     """
     List top-level folders in the storage bucket.

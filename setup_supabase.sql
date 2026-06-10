@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS tenants (
     banking_set_up  TEXT DEFAULT 'No',
     move_in_status  TEXT DEFAULT 'Pending',
     lease_signed    TEXT DEFAULT 'No',
+    email           TEXT DEFAULT '',
     created_at      TIMESTAMPTZ DEFAULT now(),
     UNIQUE(user_id, unit)
 );
@@ -50,6 +51,18 @@ CREATE TABLE IF NOT EXISTS documents (
     filepath        TEXT NOT NULL,
     doc_type        TEXT DEFAULT 'Other',
     uploaded_at     TIMESTAMPTZ DEFAULT now()
+);
+
+-- ── Per-account email sender & footer ─────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS email_configs (
+    user_id         UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    from_email      TEXT NOT NULL,
+    from_name       TEXT DEFAULT '',
+    reply_to        TEXT DEFAULT '',
+    footer_text     TEXT DEFAULT '',
+    ses_verified    BOOLEAN DEFAULT FALSE,
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── Marketing Configurations ──────────────────────────────────────────────
@@ -105,9 +118,24 @@ CREATE TABLE IF NOT EXISTS transactions (
     amount          NUMERIC NOT NULL,
     date            DATE NOT NULL DEFAULT CURRENT_DATE,
     status          TEXT DEFAULT 'Cleared', -- "Pending", "Cleared", "Failed"
-    stripe_id       TEXT,
     notes           TEXT,
     created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── Reference Checks ──────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS reference_checks (
+    id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tenant_id       BIGINT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ref_name        TEXT,
+    ref_phone       TEXT,
+    ref_email       TEXT,
+    ref_type        TEXT DEFAULT 'Landlord',
+    channel         TEXT,
+    status          TEXT DEFAULT 'Sent',
+    sent_at         TIMESTAMPTZ DEFAULT now(),
+    notes           TEXT
 );
 
 -- ── Phase 3: Operations (Maintenance) ─────────────────────────────────────
@@ -131,9 +159,26 @@ ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE tenants DISABLE ROW LEVEL SECURITY;
 ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
 ALTER TABLE documents DISABLE ROW LEVEL SECURITY;
+ALTER TABLE email_configs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE marketing_configs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE properties DISABLE ROW LEVEL SECURITY;
 ALTER TABLE units DISABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE maintenance_requests DISABLE ROW LEVEL SECURITY;
+ALTER TABLE reference_checks DISABLE ROW LEVEL SECURITY;
+
+-- Migration for existing databases (safe to re-run)
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS email_configs (
+    user_id         UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    from_email      TEXT NOT NULL,
+    from_name       TEXT DEFAULT '',
+    reply_to        TEXT DEFAULT '',
+    footer_text     TEXT DEFAULT '',
+    ses_verified    BOOLEAN DEFAULT FALSE,
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE email_configs DISABLE ROW LEVEL SECURITY;
+

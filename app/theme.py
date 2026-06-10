@@ -127,6 +127,7 @@ def _get_nav_items() -> list[dict]:
         {"label": "Actions",    "icon": "notifications_active", "path": "/actions",   "roles": ["admin", "manager", "viewer"]},
         {"label": "Marketing",  "icon": "campaign",             "path": "/marketing", "roles": ["admin", "manager", "viewer"]},
         {"label": "Import Data","icon": "upload_file",          "path": "/import",    "roles": ["admin", "manager"]},
+        {"label": "Settings",   "icon": "settings",             "path": "/settings",  "roles": ["admin", "manager"]},
         {"label": "Admin",      "icon": "admin_panel_settings",  "path": "/admin",     "roles": ["admin"]},
     ]
     return [item for item in items if role in item["roles"]]

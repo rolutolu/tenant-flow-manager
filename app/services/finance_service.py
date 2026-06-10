@@ -1,4 +1,4 @@
-"""Service for managing ledgers, transactions, and Stripe integration."""
+"""Service for managing ledgers and transactions."""
 import datetime
 from app.models.database import get_client
 
@@ -8,7 +8,9 @@ def get_transactions(user_id: str, limit: int = 100) -> list[dict]:
     response = client.table("transactions").select("*, tenants(name), units(unit_number)").eq("user_id", user_id).order("date", desc=True).limit(limit).execute()
     return response.data or []
 
-def add_transaction(user_id: str, type: str, category: str, amount: float, tenant_id: int = None, unit_id: str = None, date: str = None, notes: str = None) -> str | None:
+def add_transaction(user_id: str, type: str, category: str, amount: float, tenant_id: int = None,
+                    unit_id: str = None, date: str = None, notes: str = None,
+                    status: str = None) -> str | None:
     """Add a new charge or payment to the ledger."""
     client = get_client()
     data = {
@@ -19,8 +21,10 @@ def add_transaction(user_id: str, type: str, category: str, amount: float, tenan
         "category": category,
         "amount": amount,
         "date": date or datetime.date.today().isoformat(),
-        "notes": notes
+        "notes": notes,
     }
+    if status:
+        data["status"] = status
     try:
         response = client.table("transactions").insert(data).execute()
         return response.data[0]["id"]
@@ -54,9 +58,12 @@ def get_revenue_summary(user_id: str) -> dict:
         "etransfer_count": sum(1 for t in transactions if t["type"] == "Payment" and t.get("notes", "") == "E-Transfer"),
     }
 
-# Stripe Integration Stubs
-def create_checkout_session(amount: float, description: str, success_url: str, cancel_url: str) -> str:
-    """Create a Stripe checkout session for a payment."""
-    # This requires the `stripe` python package and a Stripe Secret Key
-    # For now, we simulate returning a checkout URL
-    return f"https://checkout.stripe.com/pay/cs_test_mock?amount={amount}&desc={description}"
+def update_transaction_status(txn_id: str, status: str) -> bool:
+    """Update the status of a transaction (Pending, Cleared, Failed)."""
+    client = get_client()
+    try:
+        client.table("transactions").update({"status": status}).eq("id", txn_id).execute()
+        return True
+    except Exception as e:
+        print(f"Error updating transaction status: {e}")
+        return False

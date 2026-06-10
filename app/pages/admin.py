@@ -1,7 +1,8 @@
 """Admin page — user account management (admin-only)."""
 
 from nicegui import ui
-from app.auth import require_role, get_user_id, create_user, get_all_users, delete_user
+from app.auth import require_role, get_user_id, create_user, get_all_users, delete_user, reset_user_password
+from app.services.audit_service import get_audit_logs
 from app.theme import (page_layout, section_header, ACCENT, SUCCESS, DANGER,
                         TEXT_SECONDARY, CARD_BG, BORDER, TEXT_PRIMARY)
 
@@ -143,9 +144,32 @@ def admin_page():
                                         # Don't allow deleting yourself
                                         if user["id"] != current_user_id:
                                             ui.button(
+                                                icon="lock_reset",
+                                                on_click=lambda _, uid=user["id"], uname=user["username"]: confirm_reset(uid, uname),
+                                            ).props("flat round color=primary size=sm").tooltip("Reset Password")
+                                            ui.button(
                                                 icon="delete",
                                                 on_click=lambda _, uid=user["id"], uname=user["username"]: confirm_delete(uid, uname),
                                             ).props("flat round color=negative size=sm").tooltip("Delete")
+
+                def confirm_reset(uid: str, uname: str):
+                    with ui.dialog() as dialog, ui.card().classes("p-6 rounded-2xl w-96"):
+                        ui.label(f"Reset password for '{uname}'").classes("text-lg font-semibold mb-2")
+                        new_pw = ui.input(
+                            label="New Password", password=True, password_toggle_button=True
+                        ).classes("w-full mb-4").props("outlined")
+                        with ui.row().classes("gap-2 justify-end w-full"):
+                            ui.button("Cancel", on_click=dialog.close).props("flat")
+
+                            def do_reset():
+                                success, msg = reset_user_password(uid, new_pw.value)
+                                ui.notify(msg, type="positive" if success else "negative")
+                                dialog.close()
+
+                            ui.button("Reset", on_click=do_reset, icon="lock_reset").props(
+                                "unelevated color=primary"
+                            )
+                    dialog.open()
 
                 def confirm_delete(uid: str, uname: str):
                     with ui.dialog() as dialog, ui.card().classes("p-6 rounded-2xl"):
@@ -166,3 +190,31 @@ def admin_page():
                     dialog.open()
 
                 refresh_users()
+
+        section_header("Audit Trail", "Recent system actions logged for compliance")
+
+        admin_user_id = get_user_id()
+        logs = get_audit_logs(admin_user_id, limit=100)
+        if logs:
+            log_rows = [
+                {
+                    "timestamp": (log.get("timestamp") or "")[:19],
+                    "action": log.get("action", ""),
+                    "entity_type": log.get("entity_type", ""),
+                    "entity_id": log.get("entity_id", ""),
+                    "detail": str(log.get("new_value") or log.get("old_value") or "")[:80],
+                }
+                for log in logs
+            ]
+            ui.table(
+                columns=[
+                    {"name": "timestamp", "label": "Time", "field": "timestamp", "align": "left"},
+                    {"name": "action", "label": "Action", "field": "action", "align": "left"},
+                    {"name": "entity_type", "label": "Entity", "field": "entity_type", "align": "left"},
+                    {"name": "entity_id", "label": "ID", "field": "entity_id", "align": "left"},
+                    {"name": "detail", "label": "Details", "field": "detail", "align": "left"},
+                ],
+                rows=log_rows,
+            ).classes("w-full").props("flat bordered dense")
+        else:
+            ui.label("No audit logs yet.").classes("text-sm").style(f"color: {TEXT_SECONDARY}")

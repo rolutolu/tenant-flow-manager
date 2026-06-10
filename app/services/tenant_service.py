@@ -6,7 +6,7 @@ from app.services.audit_service import log_action
 
 def add_tenant(user_id: str, name: str, unit: str, rent_amount: float,
                unit_address: str = "", lease_start: str = "", lease_end: str = "",
-               bank_info: str = "", banking_set_up: str = "No",
+               email: str = "", bank_info: str = "", banking_set_up: str = "No",
                move_in_status: str = "Pending", lease_signed: str = "No", unit_id: str = None) -> int:
     """Insert a new tenant and return their ID."""
     client = get_client()
@@ -19,6 +19,7 @@ def add_tenant(user_id: str, name: str, unit: str, rent_amount: float,
         "rent_amount": rent_amount,
         "lease_start": lease_start,
         "lease_end": lease_end,
+        "email": email,
         "bank_info": encrypt_value(bank_info),
         "banking_set_up": banking_set_up,
         "move_in_status": move_in_status,
