@@ -142,16 +142,24 @@ def login(user_id: str, username: str, role: str, phone_number: str = ""):
         app.storage.user["mfa_otp"] = otp
         app.storage.user["mfa_otp_expiry"] = time.time() + 600  # 10 min
 
+        show_code_on_page = False
         if phone_number:
             from app.services.notification_service import send_mfa_sms
             ok, msg = send_mfa_sms(phone_number, otp)
+            # Simulated SMS or failed send — show code on MFA page (reload hides terminal prints)
+            show_code_on_page = (not ok) or ("Simulated" in msg)
             if not ok:
-                print(f"[MFA WARNING] Could not send SMS to {phone_number}: {msg}")
+                print(f"[MFA WARNING] Could not send SMS to {phone_number}: {msg}", flush=True)
             else:
-                print(f"[MFA] OTP sent to {phone_number} for admin '{username}'")
+                print(f"[MFA] OTP sent to {phone_number} for admin '{username}'", flush=True)
         else:
-            # No phone on file — print OTP to terminal for dev/testing
-            print(f"[MFA DEV] OTP for admin '{username}': {otp} (add phone_number to your profile to receive via SMS)")
+            show_code_on_page = True
+            print(
+                f"[MFA DEV] OTP for admin '{username}': {otp} "
+                f"(add phone_number to your profile to receive via SMS)",
+                flush=True,
+            )
+        app.storage.user["mfa_show_code"] = show_code_on_page
 
 
 def logout():

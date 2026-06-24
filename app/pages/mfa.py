@@ -26,6 +26,8 @@ def mfa_page():
 
     username = app.storage.user.get("username", "Admin")
     has_phone = bool(app.storage.user.get("mfa_phone", ""))
+    show_code = app.storage.user.get("mfa_show_code", False)
+    dev_otp = app.storage.user.get("mfa_otp", "") if show_code else ""
 
     with ui.column().classes("w-full items-center justify-center fade-in").style(
         f"min-height: 100vh; background-color: {SURFACE};"
@@ -52,13 +54,27 @@ def mfa_page():
                     'color: #1C1915; margin-top: 4px;">Two-Factor Authentication</div>'
                 )
                 ui.label(
-                    f"A verification code was sent to your phone."
-                    if has_phone
-                    else "Check the server terminal for your verification code."
+                    "A verification code was sent to your phone."
+                    if has_phone and not show_code
+                    else "Enter the verification code below."
                 ).style(
                     "color: #827B77; font-size: 0.85rem; text-align: center; "
                     "font-family: 'Inter', sans-serif;"
                 )
+
+            if dev_otp:
+                with ui.card().classes("w-full p-4 mb-4 text-center").style(
+                    "background: #F0FDF4; border: 1px solid #BBF7D0;"
+                ):
+                    ui.label("Your verification code").classes("text-xs font-semibold").style(
+                        "color: #166534; font-family: 'Inter', sans-serif;"
+                    )
+                    ui.label(dev_otp).classes("text-3xl font-bold tracking-widest mt-1").style(
+                        "color: #15803D; font-family: 'Inter', monospace;"
+                    )
+                    ui.label("Shown here because SMS is not configured or no phone is on file.").classes(
+                        "text-xs mt-2"
+                    ).style("color: #166534;")
 
             # OTP input
             code_input = ui.input(
@@ -87,6 +103,7 @@ def mfa_page():
                     app.storage.user["mfa_verified"] = True
                     app.storage.user.pop("mfa_otp", None)
                     app.storage.user.pop("mfa_otp_expiry", None)
+                    app.storage.user.pop("mfa_show_code", None)
                     app.storage.user["last_activity"] = time.time()
                     ui.navigate.to("/")
                 else:
