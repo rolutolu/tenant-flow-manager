@@ -1,6 +1,6 @@
 """Login page — username/password authentication."""
 
-from nicegui import ui
+from nicegui import ui, app
 from app.auth import attempt_login, is_authenticated
 from app.theme import PRIMARY, ACCENT, TEXT_SECONDARY, GLOBAL_CSS
 
@@ -17,39 +17,33 @@ def login_page():
 
     ui.colors(primary=PRIMARY, secondary=ACCENT, accent=ACCENT)
 
-    # Full-page background
+    # Full-page background (Deep charcoal)
     with ui.element("div").classes("absolute inset-0").style(
-        f"background: linear-gradient(135deg, {PRIMARY} 0%, #1E293B 40%, #334155 100%);"
+        "background-color: #120E0C;"
         "min-height: 100vh; display: flex; align-items: center; justify-content: center;"
     ):
         with ui.column().classes("items-center gap-6").style(
             "max-width: 420px; width: 100%; padding: 0 20px;"
         ):
             # Logo area
-            with ui.column().classes("items-center gap-3 mb-2"):
-                with ui.element("div").classes("rounded-2xl p-5 mb-1").style(
-                    f"background: linear-gradient(135deg, {ACCENT}, #8B5CF6);"
-                    "box-shadow: 0 8px 32px rgba(99, 102, 241, 0.35);"
-                ):
-                    ui.icon("apartment", size="44px").classes("text-white")
-                ui.label("Virix").classes(
-                    "text-3xl font-bold tracking-wider text-white uppercase"
+            with ui.row().classes("items-center gap-3 mb-2"):
+                ui.image("/static/virix_logo.png").style(
+                    "width: 42px; height: 42px; border-radius: 8px; object-fit: cover;"
                 )
-                ui.label("Property Management Suite").classes("text-sm").style(
-                    "color: #94A3B8"
-                )
+                with ui.column().classes("gap-0"):
+                    ui.html('<div style="font-family: \'Playfair Display\', serif; font-style: italic; font-weight: 600; font-size: 1.6rem; color: #FFFFFF; line-height: 1; margin-top: -2px;">Virix.</div>')
+                    ui.label("PROPERTY SUITE").classes("text-[10px] font-bold tracking-widest uppercase").style("color: #827B77; line-height: 1; margin-top: 1px;")
 
             # Login card
-            with ui.card().classes("w-full p-8 rounded-2xl shadow-2xl").style(
-                "background: rgba(255, 255, 255, 0.95);"
-                "backdrop-filter: blur(20px);"
-                "border: 1px solid rgba(255,255,255,0.2);"
+            with ui.card().classes("w-full p-8 rounded-2xl shadow-xl").style(
+                "border: 1px solid #E6E4DF;"
+                "background-color: #FFFFFF;"
             ):
                 ui.label("Welcome Back").classes("text-xl font-bold mb-1").style(
-                    f"color: {PRIMARY}"
+                    "color: #1C1915; font-family: 'Inter', sans-serif;"
                 )
                 ui.label("Sign in to your account").classes("text-sm mb-5").style(
-                    f"color: {TEXT_SECONDARY}"
+                    "color: #827B77;"
                 )
 
                 username_input = ui.input(
@@ -66,7 +60,7 @@ def login_page():
                     ui.notify("Password recovery is not fully implemented yet. Please contact your administrator.", type="warning")
 
                 with ui.row().classes("w-full justify-end mb-4"):
-                    ui.button("Forgot Password?", on_click=handle_forgot_password).props("flat dense").classes("text-sm normal-case").style(f"color: {ACCENT}")
+                    ui.button("Forgot Password?", on_click=handle_forgot_password).props("flat dense").classes("text-sm normal-case").style("color: #120E0C;")
 
                 error_label = ui.label("").classes("text-sm").style("color: #EF4444")
                 error_label.set_visibility(False)
@@ -74,7 +68,11 @@ def login_page():
                 def handle_login():
                     success, msg = attempt_login(username_input.value, password_input.value)
                     if success:
-                        ui.navigate.to("/")
+                        role = app.storage.user.get("role", "viewer")
+                        if role == "admin":
+                            ui.navigate.to("/mfa")
+                        else:
+                            ui.navigate.to("/")
                     else:
                         error_label.text = msg
                         error_label.set_visibility(True)
@@ -84,11 +82,12 @@ def login_page():
                 ui.button("Sign In", on_click=handle_login, icon="login").classes(
                     "w-full mt-3"
                 ).props("rounded unelevated size=lg").style(
-                    f"background: linear-gradient(135deg, {ACCENT}, #8B5CF6) !important;"
+                    "background: #120E0C !important; font-family: 'Inter', sans-serif; font-weight: 500;"
                 )
 
             with ui.row().classes("items-center gap-2 mt-3"):
-                ui.icon("cloud_done", size="14px").style("color: #94A3B8")
+                ui.icon("cloud_done", size="14px").style("color: #827B77")
                 ui.label("Secured by Supabase").classes("text-xs").style(
-                    "color: #94A3B8"
+                    "color: #827B77"
                 )
+

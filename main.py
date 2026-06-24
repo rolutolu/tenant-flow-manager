@@ -22,16 +22,20 @@ from app.pages.maintenance import maintenance_page
 from app.pages.actions import actions_page
 from app.pages.admin import admin_page
 from app.pages.settings import settings_page
+from app.pages.mfa import mfa_page
 
-from nicegui import ui  # noqa: E402
+from nicegui import ui, app as nicegui_app  # noqa: E402
 from app.config import APP_TITLE, APP_HOST, APP_PORT, STORAGE_SECRET  # noqa: E402
 
-ui.run(
-    title=APP_TITLE,
-    host=APP_HOST,
-    port=APP_PORT,
-    dark=False,
-    storage_secret=STORAGE_SECRET,
-    reload=True,
-    show_welcome_message=False,
-)
+nicegui_app.add_static_files("/static", "static")
+
+if __name__ in {"__main__", "__mp_main__"}:
+    ui.run(
+        title=APP_TITLE,
+        host=APP_HOST,
+        port=APP_PORT,
+        dark=False,
+        storage_secret=STORAGE_SECRET,
+        reload=True,
+        show_welcome_message=False,
+    )

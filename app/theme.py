@@ -3,28 +3,28 @@
 from contextlib import contextmanager
 from nicegui import ui, app
 
-
-# ── Brand Colors (refined palette) ─────────────────────────────────────────────
-PRIMARY = "#0F172A"       # Rich dark navy
-PRIMARY_LIGHT = "#1E293B" # Slightly lighter navy
-ACCENT = "#6366F1"        # Indigo / violet accent
-ACCENT_LIGHT = "#818CF8"  # Lighter accent for hovers
-SURFACE = "#F1F5F9"       # Cool gray background
+# ── Brand Colors (refined palette matching the mockup) ───────────────────────
+PRIMARY = "#120E0C"       # Rich warm charcoal/black
+PRIMARY_LIGHT = "#1E1B18"
+ACCENT = "#120E0C"        # Black (was burgundy)
+ACCENT_LIGHT = "#2A2A2A"
+SURFACE = "#F6F5F3"       # Soft cream background
 CARD_BG = "#FFFFFF"
-TEXT_PRIMARY = "#0F172A"
-TEXT_SECONDARY = "#64748B"
+TEXT_PRIMARY = "#1C1915"
+TEXT_SECONDARY = "#827B77"
 SUCCESS = "#10B981"
 WARNING = "#F59E0B"
 DANGER = "#EF4444"
-BORDER = "#E2E8F0"
+BORDER = "#E6E4DF"
 
 # ── Global Styles ──────────────────────────────────────────────────────────────
 GLOBAL_CSS = """
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,400;1,500;1,600;1,700&family=Inter:wght@400;500;600;700&display=swap');
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
     cursor: default;
+    background-color: #F6F5F3 !important;
 }
 input, button, select, textarea, label,
 .q-btn, .q-field, .q-card, .q-tab, .q-table,
@@ -41,8 +41,12 @@ input, button, select, textarea, label,
 a[href="https://nicegui.io"] { display: none !important; }
 div[style*="nicegui"] { display: none !important; }
 
-/* Fix "white bar" / header borders */
-.q-header { border: none !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important; }
+/* Fix header styling */
+.q-header {
+    background-color: #120E0C !important;
+    box-shadow: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+}
 .q-layout__section--marginal { background-color: transparent !important; }
 
 /* Blur overlay for locked sections */
@@ -62,30 +66,13 @@ html { scroll-behavior: smooth; }
 
 /* Card hover lift effect */
 .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.card-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.08) !important; }
+.card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(26,22,21,0.06) !important; }
 
 /* Glass effect */
 .glass {
     background: rgba(255, 255, 255, 0.7) !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
-}
-
-/* Sidebar nav item hover */
-.nav-item {
-    transition: all 0.2s ease;
-    border-radius: 10px;
-}
-.nav-item:hover {
-    background: rgba(99, 102, 241, 0.08) !important;
-    transform: translateX(4px);
-}
-
-/* Gradient text helper */
-.gradient-text {
-    background: linear-gradient(135deg, #6366F1, #8B5CF6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
 }
 
 /* Pulse animation for badges */
@@ -111,136 +98,170 @@ html { scroll-behavior: smooth; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* Premium Editorial Styles */
+.editorial-title {
+    font-family: 'Playfair Display', Georgia, serif !important;
+    font-style: italic !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.01em;
+}
+
+.editorial-metric {
+    font-family: 'Playfair Display', Georgia, serif !important;
+    font-style: italic !important;
+    font-weight: 400 !important;
+}
+
+.metric-label {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.65rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.15em !important;
+    font-weight: 600 !important;
+    color: #827B77 !important;
+}
+
+.metric-card-line {
+    height: 3px;
+    width: 32px;
+    background-color: #E6E4DF;
+    border-radius: 1.5px;
+    margin-top: 6px;
+}
+
+.q-menu {
+    border: 1px solid #E6E4DF !important;
+    box-shadow: 0 10px 30px rgba(26,22,21,0.08) !important;
+    border-radius: 12px !important;
+}
+
+.q-item {
+    font-family: 'Inter', sans-serif !important;
+}
+
+.q-card {
+    border-radius: 16px !important;
+    box-shadow: 0 4px 20px rgba(26,22,21,0.03) !important;
+    border: 1px solid #E6E4DF !important;
+    background-color: #FFFFFF !important;
+}
+
+.q-table__container {
+    border-radius: 16px !important;
+    box-shadow: 0 4px 20px rgba(26,22,21,0.03) !important;
+    border: 1px solid #E6E4DF !important;
+    background-color: #FFFFFF !important;
+}
+.q-table th {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 600 !important;
+    color: #827B77 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    font-size: 0.7rem !important;
+}
+.q-table td {
+    font-family: 'Inter', sans-serif !important;
+    color: #1A1615 !important;
+}
+
+.title-separator {
+    height: 1px;
+    background-color: #E6E4DF;
+    width: 100%;
+    margin-top: 4px;
+    margin-bottom: 16px;
+}
 """
-
-
-def _get_nav_items() -> list[dict]:
-    """Return nav items filtered by the current user's role."""
-    role = app.storage.user.get("role", "viewer")
-    items = [
-        {"label": "Dashboard",  "icon": "dashboard",            "path": "/",          "roles": ["admin", "manager", "viewer"]},
-        {"label": "Properties", "icon": "business",             "path": "/properties","roles": ["admin", "manager"]},
-        {"label": "Intake",     "icon": "person_add",           "path": "/intake",    "roles": ["admin", "manager"]},
-        {"label": "Leases",     "icon": "description",          "path": "/lease",     "roles": ["admin", "manager"]},
-        {"label": "Finance",    "icon": "account_balance",      "path": "/finance",   "roles": ["admin", "manager"]},
-        {"label": "Maintenance","icon": "build",                "path": "/maintenance","roles": ["admin", "manager"]},
-        {"label": "Actions",    "icon": "notifications_active", "path": "/actions",   "roles": ["admin", "manager", "viewer"]},
-        {"label": "Marketing",  "icon": "campaign",             "path": "/marketing", "roles": ["admin", "manager", "viewer"]},
-        {"label": "Import Data","icon": "upload_file",          "path": "/import",    "roles": ["admin", "manager"]},
-        {"label": "Settings",   "icon": "settings",             "path": "/settings",  "roles": ["admin", "manager"]},
-        {"label": "Admin",      "icon": "admin_panel_settings",  "path": "/admin",     "roles": ["admin"]},
-    ]
-    return [item for item in items if role in item["roles"]]
-
 
 @contextmanager
 def page_layout(title: str = ""):
-    """Context manager that wraps page content with header + sidebar navigation."""
+    """Context manager that wraps page content with a premium top-nav layout matching the mockup."""
     # Inject global styles
     ui.add_head_html(f"<style>{GLOBAL_CSS}</style>")
 
     ui.colors(primary=PRIMARY, secondary=ACCENT, accent=ACCENT, positive=SUCCESS,
               negative=DANGER, warning=WARNING)
 
-    username = app.storage.user.get("username", "User")
     role = app.storage.user.get("role", "viewer")
 
-    # ── Header ─────────────────────────────────────────────────────────────
-    with ui.header().classes("items-center justify-between px-6 shadow-lg").style(
-        f"background: linear-gradient(135deg, {PRIMARY} 0%, #1E293B 50%, #334155 100%);"
-        "border-bottom: 1px solid rgba(255,255,255,0.08);"
-    ):
-        with ui.row().classes("items-center gap-3"):
-            with ui.element("div").classes("rounded-xl p-2").style(
-                f"background: linear-gradient(135deg, {ACCENT}, #8B5CF6);"
-            ):
-                ui.icon("apartment", size="22px").classes("text-white")
-            with ui.column().classes("gap-0"):
-                ui.label("Virix").classes(
-                    "text-white text-lg font-bold tracking-wide leading-tight uppercase"
-                )
-                ui.label("Property Suite").classes(
-                    "text-slate-400 text-[10px] font-semibold tracking-widest uppercase leading-tight"
-                )
-
-        with ui.row().classes("items-center gap-3"):
-            if title and title.strip():
-                ui.badge(title).props("outline color=white").classes("text-[10px] px-2 opacity-70 border-white/30")
-            # User pill
-            with ui.row().classes("items-center gap-2 rounded-full px-3 py-1").style(
-                "background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);"
-            ):
-                ui.icon("person", size="16px").classes("text-slate-300")
-                ui.label(username).classes("text-slate-200 text-xs font-medium")
-                ui.badge(role.capitalize(), color="#6366F1").classes("text-xs")
-            ui.button(icon="logout", on_click=_logout).props(
-                "flat round color=white size=sm"
-            ).tooltip("Sign Out")
-
-    # ── Sidebar ────────────────────────────────────────────────────────────
-    with ui.left_drawer(value=True, bordered=True).classes("p-4").style(
-        f"background: {CARD_BG}; border-right: 1px solid {BORDER};"
-    ):
-        ui.label("NAVIGATION").classes(
-            "text-xs font-bold tracking-widest mb-4 px-3"
-        ).style(f"color: {TEXT_SECONDARY}")
-
-        for item in _get_nav_items():
-            with ui.row().classes(
-                "items-center gap-3 px-3 py-2.5 cursor-pointer nav-item w-full"
-            ).on("click", lambda _, p=item["path"]: ui.navigate.to(p)):
-                with ui.element("div").classes("rounded-lg p-1.5").style(
-                    f"background: {ACCENT}12;"
-                ):
-                    ui.icon(item["icon"], size="18px").style(f"color: {ACCENT}")
-                ui.label(item["label"]).classes("text-sm font-medium").style(
-                    f"color: {TEXT_PRIMARY}"
-                )
-
-        # Footer
-        ui.space()
-        ui.separator().classes("my-3")
-        with ui.row().classes("items-center gap-2 px-3"):
-            ui.icon("cloud_done", size="14px").style(f"color: {SUCCESS}")
-            ui.label("Cloud Connected").classes("text-xs font-medium").style(
-                f"color: {SUCCESS}"
+    # ── Top Header ─────────────────────────────────────────────────────────
+    with ui.header().classes("items-center justify-between px-8 py-4 shadow-sm"):
+        # Logo block
+        with ui.row().classes("items-center gap-3 cursor-pointer").on("click", lambda: ui.navigate.to("/")):
+            ui.image("/static/virix_logo.png").style(
+                "width: 36px; height: 36px; border-radius: 8px; object-fit: cover;"
             )
+            # Text block
+            with ui.column().classes("gap-0"):
+                ui.html('<div style="font-family: \'Playfair Display\', serif; font-style: italic; font-weight: 600; font-size: 1.4rem; color: #FFFFFF; line-height: 1; margin-top: -2px;">Virix.</div>')
+                ui.label("PROPERTY SUITE").classes("text-[9px] font-bold tracking-widest uppercase").style("color: #827B77; line-height: 1; margin-top: 1px;")
 
-    # ── Main Content ───────────────────────────────────────────────────────
-    with ui.column().classes("w-full p-8 gap-6 fade-in").style(
-        f"background: {SURFACE}; min-height: 100vh"
+        # Navigation menu centered/right
+        allowed_paths = []
+        if role in ("admin", "manager"):
+            allowed_paths.append("/properties")
+            allowed_paths.append("/lease")
+            allowed_paths.append("/finance")
+        allowed_paths.append("/actions")
+
+        nav_items = [
+            {"label": "Portfolio", "path": "/properties"},
+            {"label": "Leases", "path": "/lease"},
+            {"label": "Tenants", "path": "/actions"},
+            {"label": "Accounting", "path": "/finance"},
+        ]
+
+        with ui.row().classes("items-center gap-8 hidden md:flex").style("margin-left: auto; margin-right: 2.5rem;"):
+            for item in nav_items:
+                if item["path"] in allowed_paths:
+                    ui.label(item["label"].upper()).classes("text-[11px] font-semibold tracking-widest cursor-pointer hover:text-white transition-colors").style(
+                        "color: #D6D3D1; font-family: 'Inter', sans-serif;"
+                    ).on("click", lambda _, p=item["path"]: ui.navigate.to(p))
+
+        # Profile circle avatar with menu on the right
+        with ui.avatar(color="transparent").style(
+            "background-color: #2A2A2A !important; border: 1px solid rgba(255,255,255,0.1); width: 34px; height: 34px; cursor: pointer;"
+        ):
+            ui.icon("person", size="18px", color="white")
+            with ui.menu().classes("w-48"):
+                ui.menu_item("Dashboard", on_click=lambda: ui.navigate.to("/")).classes("text-sm")
+                if role == "admin":
+                    ui.menu_item("Admin Panel", on_click=lambda: ui.navigate.to("/admin")).classes("text-sm")
+                if role in ("admin", "manager"):
+                    ui.menu_item("Maintenance Hub", on_click=lambda: ui.navigate.to("/maintenance")).classes("text-sm")
+                    ui.menu_item("Marketing", on_click=lambda: ui.navigate.to("/marketing")).classes("text-sm")
+                    ui.menu_item("Import Data", on_click=lambda: ui.navigate.to("/import")).classes("text-sm")
+                    ui.menu_item("Settings", on_click=lambda: ui.navigate.to("/settings")).classes("text-sm")
+                ui.separator()
+                ui.menu_item("Sign Out", on_click=_logout).classes("text-sm text-red-600")
+
+    # ── Main Content Container ─────────────────────────────────────────────
+    with ui.column().classes("w-full px-12 py-10 gap-6 fade-in").style(
+        f"background-color: {SURFACE}; min-height: 100vh"
     ):
         yield
-
 
 def _logout():
     """Clear auth state and redirect to login."""
     from app.auth import logout
     logout()
 
-
-# ── Reusable UI Components ─────────────────────────────────────────────────────
-
 def metric_card(label: str, value, icon: str = "info", color: str = ACCENT):
-    """A styled metric card for dashboards."""
-    with ui.card().classes("p-5 rounded-2xl shadow-sm card-hover").style(
-        f"background: {CARD_BG}; border: 1px solid {BORDER}; min-width: 200px"
+    """A styled metric card matching the premium editorial mockup design."""
+    with ui.card().classes("p-6 flex-1 min-w-[220px]").style(
+        "box-shadow: 0 4px 20px rgba(26,22,21,0.03); border: 1px solid #E6E4DF; border-radius: 16px;"
     ):
-        with ui.row().classes("items-center gap-3"):
-            with ui.element("div").classes("rounded-xl p-2.5").style(
-                f"background: linear-gradient(135deg, {color}18, {color}08);"
-            ):
-                ui.icon(icon, size="24px").style(f"color: {color}")
-            with ui.column().classes("gap-0"):
-                ui.label(str(value)).classes("text-2xl font-bold").style(
-                    f"color: {TEXT_PRIMARY}"
-                )
-                ui.label(label).classes("text-xs font-medium").style(f"color: {TEXT_SECONDARY}")
-
+        with ui.column().classes("gap-1 w-full"):
+            ui.label(label).classes("metric-label")
+            ui.label(str(value)).classes("editorial-metric text-4xl mt-1").style("color: #1C1915; line-height: 1;")
+            ui.element("div").classes("metric-card-line")
 
 def section_header(title: str, subtitle: str = ""):
-    """A styled section header."""
-    with ui.column().classes("gap-1 mb-2"):
-        ui.label(title).classes("text-2xl font-bold").style(f"color: {TEXT_PRIMARY}")
+    """A styled section header with serif styling and horizontal underline rule."""
+    with ui.column().classes("gap-0 mb-4 w-full"):
+        ui.label(title).classes("editorial-title text-4xl text-stone-900")
         if subtitle:
-            ui.label(subtitle).classes("text-sm").style(f"color: {TEXT_SECONDARY}")
+            ui.label(subtitle).classes("text-sm mt-1").style("color: #827B77; font-family: 'Inter', sans-serif;")
+        ui.element("div").classes("title-separator")

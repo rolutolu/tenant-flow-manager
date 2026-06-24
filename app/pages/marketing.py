@@ -10,9 +10,22 @@ from app.services.marketing_service import is_meta_configured, get_ads, get_acco
 @require_auth
 def marketing_page():
     user_id = get_user_id()
-    configured = is_meta_configured(user_id)
+    db_error = None
+    try:
+        configured = is_meta_configured(user_id)
+    except Exception as e:
+        configured = False
+        db_error = str(e)
+        print(f"[ERROR] Marketing page config check failed: {e}")
 
     with page_layout(title="Marketing"):
+        if db_error and "permission denied" in db_error.lower():
+            with ui.card().classes("w-full p-4 mb-4").style("background: #FEF2F2; border: 1px solid #FECACA;"):
+                ui.label(
+                    "Database permission error on marketing_configs. Run the GRANT statements "
+                    "at the bottom of setup_supabase.sql in your Supabase SQL Editor."
+                ).classes("text-sm text-red-800")
+
         # ── Configuration Alert & Form ────────────────────────────────────
         if not configured:
             with ui.card().classes("w-full p-6 mb-6 shadow-lg border-2 border-amber-200").style("background: #FFFBEB;"):
@@ -33,9 +46,13 @@ def marketing_page():
                             return
                         if save_marketing_config(user_id, token_input.value, acc_id_input.value):
                             ui.notify("Meta configuration saved successfully!", type="positive")
-                            ui.navigate.to("/marketing") # Refresh
+                            ui.navigate.to("/marketing")  # Refresh
                         else:
-                            ui.notify("Failed to save configuration", type="negative")
+                            ui.notify(
+                                "Failed to save configuration. Check server logs or run "
+                                "GRANT statements in setup_supabase.sql.",
+                                type="negative",
+                            )
 
                     ui.button("Save & Connect", on_click=handle_save_config, icon="bolt").props("unelevated color=warning rounded")
                     ui.label("Don't have these? Visit the Meta for Developers portal.").classes("text-xs text-amber-700")

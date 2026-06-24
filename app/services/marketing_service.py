@@ -15,13 +15,16 @@ BASE_URL = f"https://graph.facebook.com/{GRAPH_API_VERSION}"
 def get_marketing_config(user_id: str) -> dict:
     """Fetch encrypted Meta credentials for a specific user."""
     client = get_client()
-    resp = client.table("marketing_configs").select("*").eq("user_id", user_id).execute()
-    if resp.data:
-        config = resp.data[0]
-        return {
-            "access_token": decrypt_value(config["access_token"]),
-            "ad_account_id": decrypt_value(config["ad_account_id"]),
-        }
+    try:
+        resp = client.table("marketing_configs").select("*").eq("user_id", user_id).execute()
+        if resp.data:
+            config = resp.data[0]
+            return {
+                "access_token": decrypt_value(config["access_token"]),
+                "ad_account_id": decrypt_value(config["ad_account_id"]),
+            }
+    except Exception as e:
+        print(f"[ERROR] Could not load marketing config: {e}")
     # Fallback to .env for single-user/legacy mode
     return {
         "access_token": META_ACCESS_TOKEN,
@@ -40,7 +43,8 @@ def save_marketing_config(user_id: str, access_token: str, ad_account_id: str) -
     try:
         client.table("marketing_configs").upsert(data).execute()
         return True
-    except Exception:
+    except Exception as e:
+        print(f"[ERROR] Could not save marketing config: {e}")
         return False
 
 

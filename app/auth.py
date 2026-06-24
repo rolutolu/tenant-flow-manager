@@ -3,6 +3,7 @@
 from typing import Callable, Any
 from functools import wraps
 import time
+import secrets
 import bcrypt
 from nicegui import app, ui
 from app.models.database import get_client
@@ -15,18 +16,26 @@ SESSION_TIMEOUT_SECONDS = 900  # 15 minutes
 
 
 def is_authenticated() -> bool:
-    """Check if the user is currently logged in and session is active."""
+    """Check if the user is currently logged in, session is active, and MFA is complete."""
     user_id = app.storage.user.get("user_id")
     last_activity = app.storage.user.get("last_activity", 0)
-    
+
     # Check timeout
     if time.time() - last_activity > SESSION_TIMEOUT_SECONDS:
         app.storage.user.clear()  # Force logout
         return False
-        
+
+    if not user_id:
+        return False
+
+    # Block admins who haven't completed MFA
+    role = app.storage.user.get("role")
+    if role == "admin" and not app.storage.user.get("mfa_verified", False):
+        return False
+
     # Update activity timestamp on every valid request
     app.storage.user["last_activity"] = time.time()
-    return bool(user_id)
+    return True
 
 
 def get_current_user() -> dict:
@@ -100,7 +109,8 @@ def attempt_login(username: str, password: str) -> tuple[bool, str]:
 
     try:
         if bcrypt.checkpw(password.encode(), stored_hash):
-            login(user["id"], user["username"], user["role"])
+            phone = user.get("phone_number", "") or ""
+            login(user["id"], user["username"], user["role"], phone_number=phone)
             return True, "Login successful."
     except (ValueError, Exception):
         # Invalid hash in database — cannot verify
@@ -109,23 +119,39 @@ def attempt_login(username: str, password: str) -> tuple[bool, str]:
     return False, "Invalid username or password."
 
 
-def login(user_id: str, username: str, role: str):
-    """Set the user session variables upon successful login."""
+def login(user_id: str, username: str, role: str, phone_number: str = ""):
+    """Set the user session variables upon successful login.
+
+    For admin users, generates a one-time passcode, sends it via SMS,
+    and stores pending MFA state. The /mfa page verifies the code.
+    """
     app.storage.user.update(
         {
             "user_id": user_id,
             "username": username,
             "role": role,
             "last_activity": time.time(),
-            "mfa_verified": False # MFA Flag (Phase 3)
+            "mfa_verified": False,
+            "mfa_phone": phone_number,
         }
     )
-    
-    # Simulation of MFA challenge for Admins
+
     if role == "admin":
-        print(f"MFA CHALLENGE TRIGGERED for {username}")
-        # In a real setup, redirect to /mfa page. For now, simulate bypass:
-        app.storage.user["mfa_verified"] = True
+        # Generate a secure 6-digit OTP and store it with a 10-minute expiry
+        otp = str(secrets.randbelow(900000) + 100000)  # always 6 digits
+        app.storage.user["mfa_otp"] = otp
+        app.storage.user["mfa_otp_expiry"] = time.time() + 600  # 10 min
+
+        if phone_number:
+            from app.services.notification_service import send_mfa_sms
+            ok, msg = send_mfa_sms(phone_number, otp)
+            if not ok:
+                print(f"[MFA WARNING] Could not send SMS to {phone_number}: {msg}")
+            else:
+                print(f"[MFA] OTP sent to {phone_number} for admin '{username}'")
+        else:
+            # No phone on file — print OTP to terminal for dev/testing
+            print(f"[MFA DEV] OTP for admin '{username}': {otp} (add phone_number to your profile to receive via SMS)")
 
 
 def logout():

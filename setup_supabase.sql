@@ -182,3 +182,24 @@ CREATE TABLE IF NOT EXISTS email_configs (
 );
 ALTER TABLE email_configs DISABLE ROW LEVEL SECURITY;
 
+-- ── Migration: Phase 3 MFA — add phone_number to users ───────────────────────
+-- Safe to re-run. Stores the admin's phone number for Twilio MFA OTP delivery.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number TEXT DEFAULT '';
+
+-- ── Grants (required for Supabase API access) ───────────────────────────────
+-- Run this block if you see "permission denied for table ..." errors.
+GRANT ALL ON TABLE public.users TO service_role, authenticated, anon;
+GRANT ALL ON TABLE public.tenants TO service_role, authenticated, anon;
+GRANT ALL ON TABLE public.payments TO service_role, authenticated, anon;
+GRANT ALL ON TABLE public.documents TO service_role, authenticated, anon;
+GRANT ALL ON TABLE public.email_configs TO service_role, authenticated, anon;
+GRANT ALL ON TABLE public.marketing_configs TO service_role, authenticated, anon;
+GRANT ALL ON TABLE public.properties TO service_role, authenticated, anon;
+GRANT ALL ON TABLE public.units TO service_role, authenticated, anon;
+GRANT ALL ON TABLE public.audit_logs TO service_role, authenticated, anon;
+GRANT ALL ON TABLE public.transactions TO service_role, authenticated, anon;
+GRANT ALL ON TABLE public.reference_checks TO service_role, authenticated, anon;
+GRANT ALL ON TABLE public.maintenance_requests TO service_role, authenticated, anon;
+
+-- Identity columns on newer tables
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role, authenticated, anon;

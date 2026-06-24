@@ -114,6 +114,39 @@ def send_email(
         return False, f"SES error: {str(e)}"
 
 
+def send_sms(to_phone: str, body: str) -> tuple[bool, str]:
+    """Send an SMS via Twilio. Falls back to a simulated log if credentials are missing."""
+    if not to_phone:
+        return False, "Recipient phone number is required."
+
+    if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER \
+            and TWILIO_ACCOUNT_SID != "your_account_sid_here":
+        try:
+            from twilio.rest import Client
+
+            client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+            client.messages.create(
+                body=body,
+                from_=TWILIO_PHONE_NUMBER,
+                to=to_phone,
+            )
+            return True, f"SMS sent to {to_phone} successfully."
+        except Exception as e:
+            return False, f"Twilio error: {str(e)}"
+
+    print(f"[SIMULATED SMS to {to_phone}]: {body}")
+    return True, format_delivery_message(f"SMS sent to {to_phone}.", simulated=True)
+
+
+def send_mfa_sms(to_phone: str, code: str) -> tuple[bool, str]:
+    """Send a 6-digit MFA one-time passcode via SMS."""
+    body = (
+        f"Your Virix verification code is: {code}\n"
+        f"This code expires in 10 minutes. Do not share it with anyone."
+    )
+    return send_sms(to_phone, body)
+
+
 def send_reference_check(
     tenant_name: str, ref_phone: str, ref_name: str = "Reference"
 ) -> tuple[bool, str]:
@@ -123,23 +156,7 @@ def send_reference_check(
         f"Please reply YES to confirm they were a tenant/employee in good standing, "
         f"or call us at 1-800-555-0199 for any concerns. Thank you!"
     )
-
-    if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER:
-        try:
-            from twilio.rest import Client
-
-            client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-            client.messages.create(
-                body=message_body,
-                from_=TWILIO_PHONE_NUMBER,
-                to=ref_phone,
-            )
-            return True, f"SMS sent to {ref_phone} successfully."
-        except Exception as e:
-            return False, f"Twilio error: {str(e)}"
-
-    print(f"[SIMULATED SMS to {ref_phone}]: {message_body}")
-    return True, format_delivery_message(f"SMS sent to {ref_phone}.", simulated=True)
+    return send_sms(ref_phone, message_body)
 
 
 def send_reference_email(
