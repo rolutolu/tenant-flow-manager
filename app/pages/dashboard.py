@@ -112,13 +112,13 @@ def _action_card(title: str, description: str, icon: str, path: str):
     with ui.card().classes(
         "p-5 rounded-2xl shadow-sm card-hover cursor-pointer"
     ).style(
-        f"border: 1px solid {BORDER}; min-width: 220px; flex: 1"
+        "border: 1px solid var(--border); min-width: 220px; flex: 1"
     ).on("click", lambda: ui.navigate.to(path)):
         with ui.row().classes("items-center gap-3 mb-2"):
             with ui.element("div").classes("rounded-xl p-2.5").style(
-                f"background: linear-gradient(135deg, {ACCENT}18, {ACCENT}08);"
+                "background: var(--icon-bg);"
             ):
-                ui.icon(icon, size="24px").style(f"color: {ACCENT}")
-            ui.label(title).classes("font-semibold").style(f"color: {TEXT_PRIMARY}")
-        ui.label(description).classes("text-sm text-stone-500")
+                ui.icon(icon, size="24px").style("color: var(--icon-color)")
+            ui.label(title).classes("font-semibold").style("color: var(--text-primary)")
+        ui.label(description).classes("text-sm").style("color: var(--text-secondary)")
 

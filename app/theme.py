@@ -1,12 +1,12 @@
-"""Shared UI theme — premium design with header, sidebar, and page wrapper."""
+"""Shared UI theme — premium dark mode design with header, sidebar, and page wrapper."""
 
 from contextlib import contextmanager
 from nicegui import ui, app
 
-# ── Brand Colors (refined palette matching the mockup) ───────────────────────
+# ── Brand Colors (Light Mode) ─────────────────────────────────────────────────
 PRIMARY = "#120E0C"       # Rich warm charcoal/black
 PRIMARY_LIGHT = "#1E1B18"
-ACCENT = "#120E0C"        # Black (was burgundy)
+ACCENT = "#120E0C"        # Black
 ACCENT_LIGHT = "#2A2A2A"
 SURFACE = "#F6F5F3"       # Soft cream background
 CARD_BG = "#FFFFFF"
@@ -17,15 +17,64 @@ WARNING = "#F59E0B"
 DANGER = "#EF4444"
 BORDER = "#E6E4DF"
 
+# ── Dark Mode Colors ──────────────────────────────────────────────────────────
+DARK_SURFACE = "#0F0D0C"
+DARK_CARD = "#1A1714"
+DARK_CARD_BORDER = "#2C2825"
+DARK_TEXT_PRIMARY = "#F2EDE8"
+DARK_TEXT_SECONDARY = "#8A8480"
+DARK_HEADER = "#0A0908"
+DARK_ACCENT = "#C9A96E"      # Warm gold accent for dark mode
+
 # ── Global Styles ──────────────────────────────────────────────────────────────
 GLOBAL_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,400;1,500;1,600;1,700&family=Inter:wght@400;500;600;700&display=swap');
 
+:root {
+    --surface: #F6F5F3;
+    --card-bg: #FFFFFF;
+    --text-primary: #1C1915;
+    --text-secondary: #827B77;
+    --border: #E6E4DF;
+    --header-bg: #120E0C;
+    --metric-line: #E6E4DF;
+    --scrollbar-thumb: #CBD5E1;
+    --scrollbar-thumb-hover: #94A3B8;
+    --action-bar-bg: #1A1714;
+    --action-bar-border: rgba(255,255,255,0.06);
+    --card-shadow: rgba(26,22,21,0.03);
+    --card-shadow-hover: rgba(26,22,21,0.06);
+    --icon-bg: linear-gradient(135deg, #120E0C18, #120E0C08);
+    --icon-color: #120E0C;
+    --label-color: #827B77;
+}
+
+.dark-mode {
+    --surface: #0F0D0C;
+    --card-bg: #1A1714;
+    --text-primary: #F2EDE8;
+    --text-secondary: #8A8480;
+    --border: #2C2825;
+    --header-bg: #0A0908;
+    --metric-line: #2C2825;
+    --scrollbar-thumb: #3A3633;
+    --scrollbar-thumb-hover: #5A5450;
+    --action-bar-bg: #131110;
+    --action-bar-border: rgba(255,255,255,0.04);
+    --card-shadow: rgba(0,0,0,0.2);
+    --card-shadow-hover: rgba(0,0,0,0.35);
+    --icon-bg: linear-gradient(135deg, #C9A96E22, #C9A96E0A);
+    --icon-color: #C9A96E;
+    --label-color: #8A8480;
+}
+
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
     cursor: default;
-    background-color: #F6F5F3 !important;
+    background-color: var(--surface) !important;
+    transition: background-color 0.3s ease;
 }
+
 input, button, select, textarea, label,
 .q-btn, .q-field, .q-card, .q-tab, .q-table,
 .q-toolbar, .q-drawer, .q-page {
@@ -43,11 +92,95 @@ div[style*="nicegui"] { display: none !important; }
 
 /* Fix header styling */
 .q-header {
-    background-color: #120E0C !important;
+    background-color: var(--header-bg) !important;
     box-shadow: none !important;
     border-bottom: 1px solid rgba(255,255,255,0.06) !important;
 }
 .q-layout__section--marginal { background-color: transparent !important; }
+
+/* Action bar (sub-header) */
+.action-bar {
+    background-color: var(--action-bar-bg);
+    border-bottom: 1px solid var(--action-bar-border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 48px;
+    position: sticky;
+    z-index: 10;
+    overflow-x: auto;
+    transition: background-color 0.3s ease;
+}
+
+.action-bar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0 0.85rem;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04);
+    color: #D6D3D1;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+    text-decoration: none;
+}
+.action-bar-btn:hover {
+    background: rgba(255,255,255,0.10);
+    border-color: rgba(255,255,255,0.18);
+    color: #FFFFFF;
+    transform: translateY(-1px);
+}
+.action-bar-btn .material-icons {
+    font-size: 16px !important;
+    opacity: 0.85;
+}
+.action-bar-btn.accent-btn {
+    background: rgba(201, 169, 110, 0.12);
+    border-color: rgba(201, 169, 110, 0.3);
+    color: #C9A96E;
+}
+.action-bar-btn.accent-btn:hover {
+    background: rgba(201, 169, 110, 0.22);
+    border-color: rgba(201, 169, 110, 0.5);
+    color: #E2C48A;
+}
+
+/* Dark mode toggle button */
+.dark-toggle {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0 0.75rem;
+    height: 30px;
+    border-radius: 15px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: #9A9590;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.dark-toggle:hover {
+    background: rgba(255,255,255,0.10);
+    color: #D6D3D1;
+}
+.dark-toggle .material-icons {
+    font-size: 14px !important;
+}
 
 /* Blur overlay for locked sections */
 .blur-content { filter: blur(8px); pointer-events: none; user-select: none; transition: all 0.5s ease; }
@@ -66,7 +199,7 @@ html { scroll-behavior: smooth; }
 
 /* Card hover lift effect */
 .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(26,22,21,0.06) !important; }
+.card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 30px var(--card-shadow-hover) !important; }
 
 /* Glass effect */
 .glass {
@@ -96,8 +229,8 @@ html { scroll-behavior: smooth; }
 /* Better scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
 /* Premium Editorial Styles */
 .editorial-title {
@@ -105,12 +238,14 @@ html { scroll-behavior: smooth; }
     font-style: italic !important;
     font-weight: 500 !important;
     letter-spacing: -0.01em;
+    color: var(--text-primary) !important;
 }
 
 .editorial-metric {
     font-family: 'Playfair Display', Georgia, serif !important;
     font-style: italic !important;
     font-weight: 400 !important;
+    color: var(--text-primary) !important;
 }
 
 .metric-label {
@@ -119,20 +254,21 @@ html { scroll-behavior: smooth; }
     text-transform: uppercase !important;
     letter-spacing: 0.15em !important;
     font-weight: 600 !important;
-    color: #827B77 !important;
+    color: var(--label-color) !important;
 }
 
 .metric-card-line {
     height: 3px;
     width: 32px;
-    background-color: #E6E4DF;
+    background-color: var(--metric-line);
     border-radius: 1.5px;
     margin-top: 6px;
+    transition: background-color 0.3s ease;
 }
 
 .q-menu {
-    border: 1px solid #E6E4DF !important;
-    box-shadow: 0 10px 30px rgba(26,22,21,0.08) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
     border-radius: 12px !important;
 }
 
@@ -142,49 +278,109 @@ html { scroll-behavior: smooth; }
 
 .q-card {
     border-radius: 16px !important;
-    box-shadow: 0 4px 20px rgba(26,22,21,0.03) !important;
-    border: 1px solid #E6E4DF !important;
-    background-color: #FFFFFF !important;
+    box-shadow: 0 4px 20px var(--card-shadow) !important;
+    border: 1px solid var(--border) !important;
+    background-color: var(--card-bg) !important;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .q-table__container {
     border-radius: 16px !important;
-    box-shadow: 0 4px 20px rgba(26,22,21,0.03) !important;
-    border: 1px solid #E6E4DF !important;
-    background-color: #FFFFFF !important;
+    box-shadow: 0 4px 20px var(--card-shadow) !important;
+    border: 1px solid var(--border) !important;
+    background-color: var(--card-bg) !important;
 }
 .q-table th {
     font-family: 'Inter', sans-serif !important;
     font-weight: 600 !important;
-    color: #827B77 !important;
+    color: var(--text-secondary) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.08em !important;
     font-size: 0.7rem !important;
 }
 .q-table td {
     font-family: 'Inter', sans-serif !important;
-    color: #1A1615 !important;
+    color: var(--text-primary) !important;
 }
 
 .title-separator {
     height: 1px;
-    background-color: #E6E4DF;
+    background-color: var(--border);
     width: 100%;
     margin-top: 4px;
     margin-bottom: 16px;
+    transition: background-color 0.3s ease;
+}
+
+/* Dark mode overrides for Quasar components */
+.dark-mode .q-page {
+    background-color: var(--surface) !important;
+}
+.dark-mode .q-header {
+    background-color: var(--header-bg) !important;
+}
+
+/* Page background transitions */
+.page-content {
+    background-color: var(--surface);
+    min-height: 100vh;
+    transition: background-color 0.3s ease;
 }
 """
 
+
+def _get_dark_mode() -> bool:
+    """Get current dark mode preference from user storage."""
+    return app.storage.user.get("dark_mode", True)  # default = True
+
+
+def _set_dark_mode(enabled: bool):
+    """Persist dark mode preference."""
+    app.storage.user["dark_mode"] = enabled
+
+
 @contextmanager
 def page_layout(title: str = ""):
-    """Context manager that wraps page content with a premium top-nav layout matching the mockup."""
+    """Context manager that wraps page content with a premium top-nav layout."""
     # Inject global styles
     ui.add_head_html(f"<style>{GLOBAL_CSS}</style>")
+
+    # Inject dark mode class toggler script
+    ui.add_head_html("""
+    <script>
+    function applyDarkMode(enabled) {
+        if (enabled) {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+    }
+    // Immediately apply based on storage (prevents flash)
+    (function() {
+        try {
+            var stored = localStorage.getItem('nicegui:user');
+            if (stored) {
+                var data = JSON.parse(stored);
+                var dm = data.dark_mode !== undefined ? data.dark_mode : true;
+                if (dm) document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.add('dark-mode');
+            }
+        } catch(e) {
+            document.body.classList.add('dark-mode');
+        }
+    })();
+    </script>
+    """)
 
     ui.colors(primary=PRIMARY, secondary=ACCENT, accent=ACCENT, positive=SUCCESS,
               negative=DANGER, warning=WARNING)
 
     role = app.storage.user.get("role", "viewer")
+    dark_mode = _get_dark_mode()
+
+    # Apply dark mode class on body via JS on each page load
+    ui.run_javascript(f"applyDarkMode({str(dark_mode).lower()})")
 
     # ── Top Header ─────────────────────────────────────────────────────────
     with ui.header().classes("items-center justify-between px-8 py-4 shadow-sm"):
@@ -229,6 +425,7 @@ def page_layout(title: str = ""):
                 ui.menu_item("Dashboard", on_click=lambda: ui.navigate.to("/")).classes("text-sm")
                 if role == "admin":
                     ui.menu_item("Admin Panel", on_click=lambda: ui.navigate.to("/admin")).classes("text-sm")
+                    ui.menu_item("Audit Logs", on_click=lambda: ui.navigate.to("/audit")).classes("text-sm")
                 if role in ("admin", "manager"):
                     ui.menu_item("Maintenance Hub", on_click=lambda: ui.navigate.to("/maintenance")).classes("text-sm")
                     ui.menu_item("Marketing", on_click=lambda: ui.navigate.to("/marketing")).classes("text-sm")
@@ -237,31 +434,114 @@ def page_layout(title: str = ""):
                 ui.separator()
                 ui.menu_item("Sign Out", on_click=_logout).classes("text-sm text-red-600")
 
+    # ── Action Bar (Quick Access Toolbar) ──────────────────────────────────
+    _render_action_bar(role)
+
     # ── Main Content Container ─────────────────────────────────────────────
-    with ui.column().classes("w-full px-12 py-10 gap-6 fade-in").style(
-        f"background-color: {SURFACE}; min-height: 100vh"
-    ):
+    with ui.column().classes("w-full px-12 py-10 gap-6 fade-in page-content"):
         yield
+
+
+def _render_action_bar(role: str):
+    """Render the quick-action toolbar below the header."""
+    action_buttons = []
+
+    if role in ("admin", "manager"):
+        action_buttons.append({
+            "label": "New Tenant Intake",
+            "icon": "person_add",
+            "path": "/intake",
+            "accent": True,
+        })
+        action_buttons.append({
+            "label": "Generate Lease",
+            "icon": "description",
+            "path": "/lease",
+            "accent": False,
+        })
+    if role == "admin":
+        action_buttons.append({
+            "label": "Financial Sync",
+            "icon": "account_balance",
+            "path": "/finance",
+            "accent": False,
+        })
+    action_buttons.append({
+        "label": "Scan Expirations",
+        "icon": "notifications_active",
+        "path": "/actions",
+        "accent": False,
+    })
+
+    dark_mode = _get_dark_mode()
+
+    with ui.element("div").classes("action-bar"):
+        # Separator label
+        ui.html('<span style="font-size:0.62rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#5A5450;margin-right:0.5rem;white-space:nowrap;">Quick&nbsp;Access</span>')
+
+        ui.html('<div style="width:1px;height:20px;background:rgba(255,255,255,0.07);margin-right:0.5rem;"></div>')
+
+        for btn in action_buttons:
+            accent_class = "action-bar-btn accent-btn" if btn["accent"] else "action-bar-btn"
+            ui.html(
+                f'<a class="{accent_class}" href="{btn["path"]}">'
+                f'<span class="material-icons">{btn["icon"]}</span>'
+                f'{btn["label"]}'
+                f'</a>'
+            )
+
+        # Spacer + dark mode toggle (right-aligned)
+        toggle_icon = "light_mode" if dark_mode else "dark_mode"
+        toggle_label = "Light Mode" if dark_mode else "Dark Mode"
+
+        toggle_btn = ui.html(
+            f'<button id="dark-toggle-btn" class="dark-toggle" onclick="toggleDarkMode()">'
+            f'<span class="material-icons">{toggle_icon}</span>'
+            f'{toggle_label}'
+            f'</button>'
+        )
+
+    # Register the JS toggle function
+    ui.run_javascript(f"""
+    window.__darkMode = {str(dark_mode).lower()};
+    window.toggleDarkMode = function() {{
+        window.__darkMode = !window.__darkMode;
+        applyDarkMode(window.__darkMode);
+        var btn = document.getElementById('dark-toggle-btn');
+        if (btn) {{
+            if (window.__darkMode) {{
+                btn.innerHTML = '<span class="material-icons">light_mode</span>Light Mode';
+            }} else {{
+                btn.innerHTML = '<span class="material-icons">dark_mode</span>Dark Mode';
+            }}
+        }}
+        // Persist via NiceGUI fetch
+        fetch('/api/dark-mode?enabled=' + window.__darkMode, {{method: 'POST'}});
+    }};
+    """)
+
 
 def _logout():
     """Clear auth state and redirect to login."""
     from app.auth import logout
     logout()
 
+
 def metric_card(label: str, value, icon: str = "info", color: str = ACCENT):
     """A styled metric card matching the premium editorial mockup design."""
     with ui.card().classes("p-6 flex-1 min-w-[220px]").style(
-        "box-shadow: 0 4px 20px rgba(26,22,21,0.03); border: 1px solid #E6E4DF; border-radius: 16px;"
+        "box-shadow: 0 4px 20px var(--card-shadow); border: 1px solid var(--border); border-radius: 16px;"
     ):
         with ui.column().classes("gap-1 w-full"):
             ui.label(label).classes("metric-label")
-            ui.label(str(value)).classes("editorial-metric text-4xl mt-1").style("color: #1C1915; line-height: 1;")
+            ui.label(str(value)).classes("editorial-metric text-4xl mt-1").style("line-height: 1;")
             ui.element("div").classes("metric-card-line")
+
 
 def section_header(title: str, subtitle: str = ""):
     """A styled section header with serif styling and horizontal underline rule."""
     with ui.column().classes("gap-0 mb-4 w-full"):
-        ui.label(title).classes("editorial-title text-4xl text-stone-900")
+        ui.label(title).classes("editorial-title text-4xl")
         if subtitle:
-            ui.label(subtitle).classes("text-sm mt-1").style("color: #827B77; font-family: 'Inter', sans-serif;")
+            ui.label(subtitle).classes("text-sm mt-1").style("color: var(--text-secondary); font-family: 'Inter', sans-serif;")
         ui.element("div").classes("title-separator")
