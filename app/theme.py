@@ -220,11 +220,14 @@ def page_layout(title: str = ""):
                         "color: #D6D3D1; font-family: 'Inter', sans-serif;"
                     ).on("click", lambda _, p=item["path"]: ui.navigate.to(p))
 
-        # Profile circle avatar with menu on the right
-        with ui.avatar(color="transparent").style(
-            "background-color: #2A2A2A !important; border: 1px solid rgba(255,255,255,0.1); width: 34px; height: 34px; cursor: pointer;"
+        # Hamburger menu button on the right
+        with ui.element("div").style(
+            "background-color: #2A2A2A; border: 1px solid rgba(255,255,255,0.1); "
+            "width: 34px; height: 34px; border-radius: 50%; cursor: pointer; "
+            "display: flex; align-items: center; justify-content: center; "
+            "flex-shrink: 0;"
         ):
-            ui.icon("person", size="18px", color="white")
+            ui.icon("menu", size="20px").style("color: white; display: block;")
             with ui.menu().classes("w-48"):
                 ui.menu_item("Dashboard", on_click=lambda: ui.navigate.to("/")).classes("text-sm")
                 if role == "admin":
