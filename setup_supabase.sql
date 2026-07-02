@@ -203,3 +203,35 @@ GRANT ALL ON TABLE public.maintenance_requests TO service_role, authenticated, a
 
 -- Identity columns on newer tables
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role, authenticated, anon;
+
+-- ── Phase 4: Import Approval Workflow ─────────────────────────────────────────
+-- Run this block to enable the superadmin role and pending import queue.
+
+-- Extend role constraint to include superadmin
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check
+    CHECK (role IN ('superadmin', 'admin', 'manager', 'viewer'));
+
+-- Submission queue — client uploads land here before being committed to tenants
+CREATE TABLE IF NOT EXISTS import_submissions (
+    id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    submitted_by    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    filename        TEXT NOT NULL,
+    file_type       TEXT NOT NULL DEFAULT 'spreadsheet', -- 'spreadsheet' | 'raw'
+    storage_path    TEXT,            -- path in Supabase Storage (documents bucket)
+    column_mapping  JSONB,           -- the column choices made by the client
+    mapped_rows     JSONB,           -- all parsed rows in standardized format
+    row_count       INTEGER DEFAULT 0,
+    status          TEXT DEFAULT 'pending', -- pending | approved | rejected
+    submitted_at    TIMESTAMPTZ DEFAULT NOW(),
+    reviewed_at     TIMESTAMPTZ,
+    reviewed_by     UUID REFERENCES users(id) ON DELETE SET NULL,
+    rejection_note  TEXT
+);
+
+ALTER TABLE import_submissions DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON TABLE public.import_submissions TO service_role, authenticated, anon;
+
+-- After running this migration, promote your personal login to superadmin:
+-- UPDATE users SET role = 'superadmin' WHERE username = 'admin';
+

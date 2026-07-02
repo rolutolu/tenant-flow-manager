@@ -1,9 +1,10 @@
-"""Admin page — user account management (admin-only)."""
-
 from nicegui import ui
-from app.auth import require_role, get_user_id, create_user, get_all_users, delete_user, reset_user_password
+from app.auth import require_role, get_user_id, get_user_role, create_user, get_all_users, delete_user, reset_user_password
 from app.services.audit_service import get_audit_logs
-from app.theme import (page_layout, section_header, ACCENT, SUCCESS, DANGER,
+from app.services.import_submission_service import (
+    get_pending_submissions, approve_submission, reject_submission, get_download_url,
+)
+from app.theme import (page_layout, section_header, ACCENT, SUCCESS, DANGER, WARNING,
                         TEXT_SECONDARY, CARD_BG, BORDER, TEXT_PRIMARY)
 
 
@@ -191,6 +192,10 @@ def admin_page():
 
                 refresh_users()
 
+        # ── Pending Imports (superadmin only) ─────────────────────────────────
+        if get_user_role() == "superadmin":
+            _render_pending_imports(get_user_id())
+
         section_header("Audit Trail", "Recent system actions logged for compliance")
 
         admin_user_id = get_user_id()
@@ -218,3 +223,232 @@ def admin_page():
             ).classes("w-full").props("flat bordered dense")
         else:
             ui.label("No audit logs yet.").classes("text-sm").style(f"color: {TEXT_SECONDARY}")
+
+
+# ── Pending Imports renderer (superadmin only) ─────────────────────────────────
+
+import math as _math
+
+_REVIEW_ROWS_PER_PAGE = 50
+
+_REVIEW_COLS = [
+    {"name": "n",             "label": "#",           "field": "n",             "align": "right"},
+    {"name": "property",      "label": "Property",    "field": "property",      "align": "left"},
+    {"name": "unit",          "label": "Unit",        "field": "unit",          "align": "left"},
+    {"name": "tenant",        "label": "Tenant",      "field": "tenant",        "align": "left"},
+    {"name": "rent",          "label": "Rent",        "field": "rent",          "align": "right"},
+    {"name": "email",         "label": "Email",       "field": "email",         "align": "left"},
+    {"name": "lease_start",   "label": "Lease Start", "field": "lease_start",   "align": "left"},
+    {"name": "lease_end",     "label": "Lease End",   "field": "lease_end",     "align": "left"},
+    {"name": "move_in_status","label": "Move-In",     "field": "move_in_status","align": "left"},
+    {"name": "banking_set_up","label": "Banking",     "field": "banking_set_up","align": "left"},
+    {"name": "lease_signed",  "label": "Signed",      "field": "lease_signed",  "align": "left"},
+    {"name": "edit_btn",      "label": "",            "field": "edit_btn",      "align": "center"},
+]
+
+
+def _render_pending_imports(reviewer_id: str):
+    """Render the Pending Imports review section for the superadmin."""
+    pending = get_pending_submissions()
+
+    badge = f" ({len(pending)})" if pending else ""
+    section_header(f"Pending Imports{badge}", "Review, edit, and approve client data submissions")
+
+    if not pending:
+        ui.label("No pending imports — all clear.").classes("text-sm").style(f"color: {TEXT_SECONDARY}")
+        return
+
+    # local_edits: sub_id → list[dict]  (mutable copy of mapped_rows for inline edits)
+    local_pages: dict[str, int] = {}
+
+    for sub in pending:
+        sub_id    = sub["id"]
+        submitter = (sub.get("submitter") or {}).get("username", "Unknown")
+        fname     = sub.get("filename", "unknown")
+        ftype     = sub.get("file_type", "raw")
+        row_count = sub.get("row_count", 0)
+        date      = (sub.get("submitted_at") or "")[:10]
+
+        # Start with a fresh copy of the DB rows for this submission
+        editable_rows: list[dict] = list(sub.get("mapped_rows") or [])
+        local_pages[sub_id] = 1
+
+        with ui.card().classes("w-full p-6 mb-4 shadow-sm").style(
+            f"background: {CARD_BG}; border: 1px solid {BORDER}"
+        ):
+            # ── Header row ─────────────────────────────────────────────────
+            with ui.row().classes("items-start justify-between w-full mb-4 flex-wrap gap-3"):
+                with ui.column().classes("gap-1"):
+                    with ui.row().classes("items-center gap-2"):
+                        icon = "table_chart" if ftype == "spreadsheet" else "attach_file"
+                        ui.icon(icon, size="20px").style(f"color: {ACCENT}")
+                        ui.label(fname).classes("text-lg font-semibold").style(f"color: {TEXT_PRIMARY}")
+                    ui.label(
+                        f"From: {submitter}  ·  {date}  ·  "
+                        f"{ftype.capitalize()}"
+                        + (f"  ·  {row_count} rows" if ftype == "spreadsheet" else "")
+                    ).classes("text-sm").style(f"color: {TEXT_SECONDARY}")
+
+                # Download button (always shown)
+                with ui.row().classes("gap-2 items-center"):
+                    storage_path = sub.get("storage_path")
+                    if storage_path:
+                        def open_download(sp=storage_path):
+                            url = get_download_url(sp)
+                            if url:
+                                ui.navigate.to(url, new_tab=True)
+                            else:
+                                ui.notify("Could not generate download link.", type="negative")
+
+                        ui.button("Download File", on_click=open_download, icon="download").props(
+                            "outline rounded size=sm"
+                        )
+
+            # ── Spreadsheet-only: paginated preview + row editing ───────────
+            if ftype == "spreadsheet" and editable_rows:
+                table_area = ui.column().classes("w-full")
+
+                def render_review_table(sid=sub_id, rows=editable_rows, ta=table_area):
+                    ta.clear()
+                    total = len(rows)
+                    page  = local_pages.get(sid, 1)
+                    total_pages = max(1, _math.ceil(total / _REVIEW_ROWS_PER_PAGE))
+                    page  = max(1, min(page, total_pages))
+                    local_pages[sid] = page
+
+                    start = (page - 1) * _REVIEW_ROWS_PER_PAGE
+                    end   = min(start + _REVIEW_ROWS_PER_PAGE, total)
+
+                    page_rows = [
+                        {"n": start + i + 1, **r, "edit_btn": start + i}
+                        for i, r in enumerate(rows[start:end])
+                    ]
+
+                    with ta:
+                        tbl = ui.table(columns=_REVIEW_COLS, rows=page_rows).classes(
+                            "w-full mb-2"
+                        ).props("flat dense bordered")
+
+                        tbl.add_slot("body-cell-edit_btn", """
+                            <q-td :props="props">
+                                <q-btn flat round dense size="sm" icon="edit" color="primary"
+                                       @click="$parent.$emit('edit_row', props.row)" />
+                            </q-td>
+                        """)
+
+                        def handle_edit_row(e, rows_ref=rows, sid=sid, rt=render_review_table):
+                            row_data = e.args
+                            idx = row_data.get("n", 1) - 1  # "n" is 1-indexed absolute position
+                            if idx < 0 or idx >= len(rows_ref):
+                                return
+                            original = rows_ref[idx]
+
+                            with ui.dialog() as dlg, ui.card().classes("p-6 w-[520px]"):
+                                ui.label(f"Edit Row {idx + 1}").classes("text-lg font-semibold mb-4")
+                                fields = {
+                                    "property":       ui.input("Property",      value=str(original.get("property", ""))).classes("w-full mb-2").props("outlined dense"),
+                                    "unit":           ui.input("Unit",          value=str(original.get("unit", ""))).classes("w-full mb-2").props("outlined dense"),
+                                    "tenant":         ui.input("Tenant Name",   value=str(original.get("tenant", ""))).classes("w-full mb-2").props("outlined dense"),
+                                    "rent":           ui.input("Rent",          value=str(original.get("rent", ""))).classes("w-full mb-2").props("outlined dense"),
+                                    "email":          ui.input("Email",         value=str(original.get("email", ""))).classes("w-full mb-2").props("outlined dense"),
+                                    "lease_start":    ui.input("Lease Start",   value=str(original.get("lease_start", ""))).classes("w-full mb-2").props("outlined dense"),
+                                    "lease_end":      ui.input("Lease End",     value=str(original.get("lease_end", ""))).classes("w-full mb-2").props("outlined dense"),
+                                    "move_in_status": ui.input("Move-In Status",value=str(original.get("move_in_status", ""))).classes("w-full mb-2").props("outlined dense"),
+                                    "banking_set_up": ui.input("Banking Set Up",value=str(original.get("banking_set_up", ""))).classes("w-full mb-2").props("outlined dense"),
+                                    "lease_signed":   ui.input("Lease Signed",  value=str(original.get("lease_signed", ""))).classes("w-full mb-2").props("outlined dense"),
+                                }
+
+                                def save_row_edit(i=idx, f=fields, r=rows_ref, rt=rt, dlg=dlg):
+                                    r[i] = {
+                                        "property":       f["property"].value,
+                                        "unit":           f["unit"].value,
+                                        "tenant":         f["tenant"].value,
+                                        "rent":           f["rent"].value,
+                                        "email":          f["email"].value,
+                                        "lease_start":    f["lease_start"].value,
+                                        "lease_end":      f["lease_end"].value,
+                                        "move_in_status": f["move_in_status"].value,
+                                        "banking_set_up": f["banking_set_up"].value,
+                                        "lease_signed":   f["lease_signed"].value,
+                                    }
+                                    dlg.close()
+                                    rt()
+                                    ui.notify(f"Row {i + 1} updated.", type="positive")
+
+                                with ui.row().classes("gap-2 justify-end w-full mt-2"):
+                                    ui.button("Cancel", on_click=dlg.close).props("flat")
+                                    ui.button("Save", on_click=save_row_edit).props("unelevated color=primary")
+
+                            dlg.open()
+
+                        tbl.on("edit_row", handle_edit_row)
+
+                        # Pagination controls
+                        with ui.row().classes("items-center gap-3 mt-1"):
+                            prev = ui.button("← Prev", on_click=lambda sid=sid, rt=render_review_table: (
+                                local_pages.update({sid: local_pages.get(sid, 1) - 1}), rt()
+                            )).props("flat dense")
+                            prev.set_enabled(page > 1)
+
+                            ui.label(f"Page {page} of {total_pages} · {total} rows total").classes(
+                                "text-sm"
+                            ).style(f"color: {TEXT_SECONDARY}")
+
+                            nxt = ui.button("Next →", on_click=lambda sid=sid, rt=render_review_table: (
+                                local_pages.update({sid: local_pages.get(sid, 1) + 1}), rt()
+                            )).props("flat dense")
+                            nxt.set_enabled(page < total_pages)
+
+                render_review_table()
+
+            ui.separator().classes("my-4")
+
+            # ── Approve / Reject buttons ────────────────────────────────────
+            with ui.row().classes("gap-3 justify-end w-full"):
+
+                def do_reject(sid=sub_id):
+                    with ui.dialog() as dlg, ui.card().classes("p-6 w-96"):
+                        ui.label("Reject Submission").classes("text-lg font-semibold mb-2")
+                        note_input = ui.textarea(
+                            label="Rejection note (optional)",
+                            placeholder="Let the client know why this was rejected...",
+                        ).classes("w-full mb-4").props("outlined autogrow")
+                        with ui.row().classes("gap-2 justify-end w-full"):
+                            ui.button("Cancel", on_click=dlg.close).props("flat")
+                            def confirm_reject(sid=sid, ni=note_input, dlg=dlg):
+                                ok, msg = reject_submission(sid, reviewer_id, ni.value)
+                                ui.notify(msg, type="positive" if ok else "negative")
+                                dlg.close()
+                                ui.navigate.to("/admin")
+                            ui.button("Reject", on_click=confirm_reject, icon="cancel").props(
+                                "unelevated color=negative"
+                            )
+                    dlg.open()
+
+                def do_approve(sid=sub_id, rows=editable_rows):
+                    with ui.dialog() as dlg, ui.card().classes("p-6 w-96"):
+                        ui.label("Confirm Approval").classes("text-lg font-semibold mb-2")
+                        ui.label(
+                            f"This will import {len(rows)} row(s) into the database. "
+                            "This action cannot be undone."
+                        ).classes("text-sm mb-4").style(f"color: {TEXT_SECONDARY}")
+                        with ui.row().classes("gap-2 justify-end w-full"):
+                            ui.button("Cancel", on_click=dlg.close).props("flat")
+                            def confirm_approve(sid=sid, rows=rows, dlg=dlg):
+                                ok, msg = approve_submission(sid, reviewer_id, rows_override=rows)
+                                ui.notify(msg, type="positive" if ok else "negative")
+                                dlg.close()
+                                ui.navigate.to("/admin")
+                            ui.button("Approve & Import", on_click=confirm_approve, icon="check_circle").props(
+                                "unelevated color=positive"
+                            )
+                    dlg.open()
+
+                ui.button("Reject", on_click=do_reject, icon="cancel").props(
+                    "outline rounded color=negative"
+                )
+                if ftype == "spreadsheet":
+                    ui.button("Approve & Import", on_click=do_approve, icon="check_circle").props(
+                        "unelevated rounded color=positive"
+                    )
+
