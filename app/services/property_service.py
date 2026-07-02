@@ -62,3 +62,41 @@ def update_unit_status(user_id: str, unit_id: str, new_status: str) -> bool:
     except Exception as e:
         print(f"Error updating unit status: {e}")
         return False
+
+
+def update_unit(user_id: str, unit_id: str, unit_number: str, default_rent: float) -> bool:
+    """Update a unit's number and default rent."""
+    client = get_client()
+    try:
+        client.table("units").update({"unit_number": unit_number, "default_rent": default_rent}).eq("id", unit_id).execute()
+        log_action(user_id, "UNIT_UPDATED", "unit", unit_id, new_value={"unit_number": unit_number, "default_rent": default_rent})
+        return True
+    except Exception as e:
+        print(f"Error updating unit: {e}")
+        return False
+
+
+def delete_unit(user_id: str, unit_id: str) -> bool:
+    """Delete a unit by ID."""
+    client = get_client()
+    try:
+        client.table("units").delete().eq("id", unit_id).execute()
+        log_action(user_id, "UNIT_DELETED", "unit", unit_id)
+        return True
+    except Exception as e:
+        print(f"Error deleting unit: {e}")
+        return False
+
+
+def delete_property(user_id: str, property_id: str) -> bool:
+    """Delete a property and all its units by property ID."""
+    client = get_client()
+    try:
+        # Units are cascade-deleted by Supabase foreign key; log the property deletion
+        client.table("properties").delete().eq("id", property_id).execute()
+        log_action(user_id, "PROPERTY_DELETED", "property", property_id)
+        return True
+    except Exception as e:
+        print(f"Error deleting property: {e}")
+        return False
+

@@ -1,29 +1,32 @@
 """Properties page for managing buildings and units."""
 from nicegui import ui
 from app.auth import require_role, get_user_id
-from app.theme import page_layout, section_header, ACCENT, TEXT_SECONDARY, CARD_BG, BORDER
-from app.services.property_service import get_properties, add_property, get_units_by_property, add_unit, update_unit_status
+from app.theme import page_layout, section_header, ACCENT, TEXT_SECONDARY, CARD_BG, BORDER, DANGER
+from app.services.property_service import (
+    get_properties, add_property, get_units_by_property, add_unit,
+    update_unit_status, update_unit, delete_unit, delete_property,
+)
 from app.services.tenant_service import get_all_tenants
 
 @ui.page("/properties")
 @require_role("admin", "manager")
 def properties_page():
     user_id = get_user_id()
-    
+
     with page_layout(title="Properties & Units"):
         section_header("Property Management", "Manage your buildings, complexes, and individual units")
-        
+
         properties = get_properties(user_id)
         tenants = get_all_tenants(user_id)
         # Create lookup map: {unit_id: tenant_name}
         tenant_lookup = {t["unit_id"]: t["name"] for t in tenants if t.get("unit_id")}
-        
+
         # ── Add Property Modal ──────────────────────────────────────────────
         with ui.dialog() as add_prop_dialog, ui.card().classes("w-96 p-6"):
             ui.label("Add New Property").classes("text-xl font-bold mb-4")
             p_name = ui.input(label="Property Name").classes("w-full mb-2").props("outlined")
             p_address = ui.input(label="Address").classes("w-full mb-4").props("outlined")
-            
+
             def save_prop():
                 if not p_name.value or not p_address.value:
                     return ui.notify("Name and address are required", type="warning")
@@ -33,7 +36,7 @@ def properties_page():
                     ui.navigate.to("/properties")
                 else:
                     ui.notify("Failed to add property", type="negative")
-            
+
             with ui.row().classes("w-full justify-end gap-2"):
                 ui.button("Cancel", on_click=add_prop_dialog.close).props("flat")
                 ui.button("Save", on_click=save_prop).props("unelevated color=primary")
@@ -44,11 +47,10 @@ def properties_page():
             ui.label("Add New Unit").classes("text-xl font-bold mb-4")
             u_num = ui.input(label="Unit Number").classes("w-full mb-2").props("outlined")
             u_rent = ui.number(label="Default Rent", value=1000).classes("w-full mb-4").props("outlined")
-            
+
             def save_unit():
                 if not u_num.value:
                     return ui.notify("Unit number is required", type="warning")
-                # Bug fix #8: Guard against null property_id
                 if not selected_prop_id_for_unit["id"]:
                     return ui.notify("No property selected. Please add a property first.", type="negative")
                 if add_unit(user_id, selected_prop_id_for_unit["id"], u_num.value, u_rent.value):
@@ -57,7 +59,7 @@ def properties_page():
                     ui.navigate.to("/properties")
                 else:
                     ui.notify("Failed to add unit", type="negative")
-            
+
             with ui.row().classes("w-full justify-end gap-2"):
                 ui.button("Cancel", on_click=add_unit_dialog.close).props("flat")
                 ui.button("Save", on_click=save_unit).props("unelevated color=primary")
@@ -79,30 +81,136 @@ def properties_page():
                         with ui.row().classes("w-full justify-between items-start"):
                             with ui.column().classes("gap-1"):
                                 ui.label(prop["name"]).classes("text-xl font-bold")
-                                ui.label(prop["address"]).classes("text-sm text-slate-500 flex items-center gap-1").style(f"color: {TEXT_SECONDARY}")
-                            
-                            def open_unit_dialog(pid=prop["id"]):
-                                selected_prop_id_for_unit["id"] = pid
-                                add_unit_dialog.open()
-                                
-                            ui.button("Add Unit", on_click=open_unit_dialog, icon="add").props("flat dense")
+                                ui.label(prop["address"]).classes("text-sm flex items-center gap-1").style(f"color: {TEXT_SECONDARY}")
+
+                            with ui.row().classes("gap-1 items-center"):
+                                def open_unit_dialog(pid=prop["id"]):
+                                    selected_prop_id_for_unit["id"] = pid
+                                    add_unit_dialog.open()
+
+                                ui.button("Add Unit", on_click=open_unit_dialog, icon="add").props("flat dense")
+
+                                # ── Edit Property ──────────────────────────
+                                def open_edit_prop(p=prop):
+                                    with ui.dialog() as dlg, ui.card().classes("w-96 p-6"):
+                                        ui.label(f"Edit Property").classes("text-xl font-bold mb-4")
+                                        ep_name = ui.input(label="Property Name", value=p["name"]).classes("w-full mb-2").props("outlined")
+                                        ep_addr = ui.input(label="Address", value=p["address"]).classes("w-full mb-4").props("outlined")
+
+                                        def do_edit_prop():
+                                            from app.models.database import get_client
+                                            from app.services.audit_service import log_action
+                                            client = get_client()
+                                            try:
+                                                client.table("properties").update({
+                                                    "name": ep_name.value,
+                                                    "address": ep_addr.value,
+                                                }).eq("id", p["id"]).execute()
+                                                log_action(user_id, "PROPERTY_UPDATED", "property", p["id"],
+                                                           new_value={"name": ep_name.value, "address": ep_addr.value})
+                                                ui.notify("Property updated", type="positive")
+                                                dlg.close()
+                                                ui.navigate.to("/properties")
+                                            except Exception as e:
+                                                ui.notify(f"Failed: {e}", type="negative")
+
+                                        with ui.row().classes("w-full justify-end gap-2"):
+                                            ui.button("Cancel", on_click=dlg.close).props("flat")
+                                            ui.button("Save", on_click=do_edit_prop).props("unelevated color=primary")
+                                    dlg.open()
+
+                                ui.button(icon="edit", on_click=open_edit_prop).props(
+                                    "flat round dense color=primary"
+                                ).tooltip("Edit property")
+
+                                # ── Delete Property ──────────────────────────
+                                def open_delete_prop(p=prop):
+                                    with ui.dialog() as dlg, ui.card().classes("p-6 w-96"):
+                                        ui.label(f"Delete '{p['name']}'?").classes("text-lg font-semibold mb-1")
+                                        ui.label(
+                                            "This will permanently delete the property and ALL its units. "
+                                            "Tenant records will not be deleted but their unit link will be lost."
+                                        ).classes("text-sm mb-4").style(f"color: {TEXT_SECONDARY}")
+                                        with ui.row().classes("gap-2 justify-end w-full"):
+                                            ui.button("Cancel", on_click=dlg.close).props("flat")
+                                            def do_delete_prop():
+                                                if delete_property(user_id, p["id"]):
+                                                    ui.notify(f"'{p['name']}' deleted.", type="positive")
+                                                    dlg.close()
+                                                    ui.navigate.to("/properties")
+                                                else:
+                                                    ui.notify("Failed to delete property.", type="negative")
+                                            ui.button("Delete", on_click=do_delete_prop, icon="delete").props("unelevated color=negative")
+                                    dlg.open()
+
+                                ui.button(icon="delete", on_click=open_delete_prop).props(
+                                    "flat round dense color=negative"
+                                ).tooltip("Delete property")
 
                         ui.separator().classes("my-4")
-                        
+
                         units = get_units_by_property(prop["id"])
                         if not units:
                             ui.label("No units in this property. Add one to get started.").classes("text-sm text-slate-400 italic")
                         else:
                             with ui.row().classes("w-full gap-3 flex-wrap"):
                                 for u in units:
-                                    status_color = "positive" if u["status"] == "Occupied" else ("warning" if u["status"] == "Maintenance" else "grey")
-                                    with ui.card().classes("p-3 min-w-[120px] items-center text-center border shadow-none"):
+                                    status_color = (
+                                        "positive" if u["status"] == "Occupied"
+                                        else ("warning" if u["status"] == "Maintenance" else "grey")
+                                    )
+                                    with ui.card().classes("p-3 min-w-[140px] items-center text-center border shadow-none"):
                                         ui.label(u["unit_number"]).classes("font-bold text-lg")
                                         ui.badge(u["status"], color=status_color).classes("text-[10px]")
-                                        
+
                                         # Display active tenant if occupied
                                         t_name = tenant_lookup.get(u["id"])
                                         if t_name and u["status"] == "Occupied":
-                                            ui.label(t_name).classes("text-xs font-semibold text-indigo-600 mt-1 truncate max-w-[100px]")
-                                            
+                                            ui.label(t_name).classes("text-xs font-semibold text-indigo-600 mt-1 truncate max-w-[110px]")
+
                                         ui.label(f"${u['default_rent']}/mo").classes("text-xs text-slate-500 mt-1")
+
+                                        # ── Unit actions ──────────────────
+                                        with ui.row().classes("gap-0 mt-1 justify-center"):
+                                            def open_edit_unit(unit=u):
+                                                with ui.dialog() as dlg, ui.card().classes("w-80 p-6"):
+                                                    ui.label("Edit Unit").classes("text-lg font-semibold mb-4")
+                                                    eu_num = ui.input(label="Unit Number", value=unit["unit_number"]).classes("w-full mb-2").props("outlined")
+                                                    eu_rent = ui.number(label="Default Rent ($)", value=unit["default_rent"]).classes("w-full mb-4").props("outlined")
+
+                                                    def do_edit_unit():
+                                                        if update_unit(user_id, unit["id"], eu_num.value, eu_rent.value or 0):
+                                                            ui.notify("Unit updated", type="positive")
+                                                            dlg.close()
+                                                            ui.navigate.to("/properties")
+                                                        else:
+                                                            ui.notify("Failed to update unit", type="negative")
+
+                                                    with ui.row().classes("w-full justify-end gap-2"):
+                                                        ui.button("Cancel", on_click=dlg.close).props("flat")
+                                                        ui.button("Save", on_click=do_edit_unit).props("unelevated color=primary")
+                                                dlg.open()
+
+                                            ui.button(icon="edit", on_click=open_edit_unit).props(
+                                                "flat round dense color=primary size=xs"
+                                            ).tooltip("Edit unit")
+
+                                            def open_delete_unit(unit=u):
+                                                with ui.dialog() as dlg, ui.card().classes("p-5 w-80"):
+                                                    ui.label(f"Delete Unit {unit['unit_number']}?").classes("text-base font-semibold mb-2")
+                                                    ui.label("This cannot be undone. Tenant records linked to this unit will remain.").classes("text-sm mb-4").style(f"color: {TEXT_SECONDARY}")
+                                                    with ui.row().classes("gap-2 justify-end w-full"):
+                                                        ui.button("Cancel", on_click=dlg.close).props("flat")
+                                                        def do_delete_unit():
+                                                            if delete_unit(user_id, unit["id"]):
+                                                                ui.notify(f"Unit {unit['unit_number']} deleted.", type="positive")
+                                                                dlg.close()
+                                                                ui.navigate.to("/properties")
+                                                            else:
+                                                                ui.notify("Failed to delete unit.", type="negative")
+                                                        ui.button("Delete", on_click=do_delete_unit, icon="delete").props("unelevated color=negative size=sm")
+                                                dlg.open()
+
+                                            ui.button(icon="delete", on_click=open_delete_unit).props(
+                                                "flat round dense color=negative size=xs"
+                                            ).tooltip("Delete unit")
