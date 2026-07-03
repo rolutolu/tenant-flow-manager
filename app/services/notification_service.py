@@ -138,14 +138,6 @@ def send_sms(to_phone: str, body: str) -> tuple[bool, str]:
     return True, format_delivery_message(f"SMS sent to {to_phone}.", simulated=True)
 
 
-def send_mfa_sms(to_phone: str, code: str) -> tuple[bool, str]:
-    """Send a 6-digit MFA one-time passcode via SMS."""
-    body = (
-        f"Your Virix verification code is: {code}\n"
-        f"This code expires in 10 minutes. Do not share it with anyone."
-    )
-    return send_sms(to_phone, body)
-
 
 def send_reference_check(
     tenant_name: str, ref_phone: str, ref_name: str = "Reference"

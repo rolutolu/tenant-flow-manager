@@ -494,34 +494,24 @@ def _render_action_bar(role: str):
             )
 
         # Spacer + dark mode toggle (right-aligned)
-        toggle_icon = "light_mode" if dark_mode else "dark_mode"
-        toggle_label = "Light Mode" if dark_mode else "Dark Mode"
+        is_dark = _get_dark_mode()
+        toggle_icon = "light_mode" if is_dark else "dark_mode"
+        toggle_label = "Light Mode" if is_dark else "Dark Mode"
 
-        toggle_btn = ui.html(
-            f'<button id="dark-toggle-btn" class="dark-toggle" onclick="toggleDarkMode()">'
-            f'<span class="material-icons">{toggle_icon}</span>'
-            f'{toggle_label}'
-            f'</button>'
-        )
+        def toggle_dark_mode():
+            current = _get_dark_mode()
+            new_val = not current
+            _set_dark_mode(new_val)
+            ui.run_javascript(f"applyDarkMode({str(new_val).lower()})")
+            # Reload so server re-renders with correct mode
+            ui.navigate.to(ui.context.client.page.path)
 
-    # Register the JS toggle function
-    ui.run_javascript(f"""
-    window.__darkMode = {str(dark_mode).lower()};
-    window.toggleDarkMode = function() {{
-        window.__darkMode = !window.__darkMode;
-        applyDarkMode(window.__darkMode);
-        var btn = document.getElementById('dark-toggle-btn');
-        if (btn) {{
-            if (window.__darkMode) {{
-                btn.innerHTML = '<span class="material-icons">light_mode</span>Light Mode';
-            }} else {{
-                btn.innerHTML = '<span class="material-icons">dark_mode</span>Dark Mode';
-            }}
-        }}
-        // Persist via NiceGUI fetch
-        fetch('/api/dark-mode?enabled=' + window.__darkMode, {{method: 'POST'}});
-    }};
-    """)
+        ui.button(toggle_label, icon=toggle_icon, on_click=toggle_dark_mode).classes(
+            "dark-toggle"
+        ).props("flat dense no-caps")
+
+    # Register applyDarkMode as a global (needed on first load)
+    ui.run_javascript(f"window.__darkMode = {str(dark_mode).lower()};")
 
 
 def _logout():

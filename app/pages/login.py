@@ -1,6 +1,6 @@
 """Login page — username/password authentication."""
 
-from nicegui import ui, app
+from nicegui import ui
 from app.auth import attempt_login, is_authenticated
 from app.theme import PRIMARY, ACCENT, TEXT_SECONDARY, GLOBAL_CSS
 
@@ -68,11 +68,7 @@ def login_page():
                 def handle_login():
                     success, msg = attempt_login(username_input.value, password_input.value)
                     if success:
-                        role = app.storage.user.get("role", "viewer")
-                        if role == "admin":
-                            ui.navigate.to("/mfa")
-                        else:
-                            ui.navigate.to("/")
+                        ui.navigate.to("/")
                     else:
                         error_label.text = msg
                         error_label.set_visibility(True)

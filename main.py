@@ -23,7 +23,6 @@ from app.pages.actions import actions_page
 from app.pages.admin import admin_page
 from app.pages.settings import settings_page
 from app.pages.audit_log import audit_log_page
-from app.pages.mfa import mfa_page
 from app.pages.register import register_page
 
 
