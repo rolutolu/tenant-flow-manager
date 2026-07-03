@@ -396,7 +396,7 @@ def page_layout(title: str = ""):
 
         # Navigation menu centered/right
         allowed_paths = []
-        if role in ("admin", "manager"):
+        if role in ("superadmin", "admin", "manager"):
             allowed_paths.append("/properties")
             allowed_paths.append("/lease")
             allowed_paths.append("/finance")
@@ -426,10 +426,10 @@ def page_layout(title: str = ""):
             ui.icon("menu", size="20px").style("color: white; display: block;")
             with ui.menu().classes("w-48"):
                 ui.menu_item("Dashboard", on_click=lambda: ui.navigate.to("/")).classes("text-sm")
-                if role == "admin":
+                if role in ("superadmin", "admin"):
                     ui.menu_item("Admin Panel", on_click=lambda: ui.navigate.to("/admin")).classes("text-sm")
                     ui.menu_item("Audit Logs", on_click=lambda: ui.navigate.to("/audit")).classes("text-sm")
-                if role in ("admin", "manager"):
+                if role in ("superadmin", "admin", "manager"):
                     ui.menu_item("Maintenance Hub", on_click=lambda: ui.navigate.to("/maintenance")).classes("text-sm")
                     ui.menu_item("Marketing", on_click=lambda: ui.navigate.to("/marketing")).classes("text-sm")
                     ui.menu_item("Import Data", on_click=lambda: ui.navigate.to("/import")).classes("text-sm")
