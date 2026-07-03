@@ -21,7 +21,9 @@ def is_authenticated() -> bool:
 
     # Check timeout
     if time.time() - last_activity > SESSION_TIMEOUT_SECONDS:
-        app.storage.user.clear()  # Force logout
+        # Clear the keys from the dict instead of unlinking the file
+        for k in list(app.storage.user.keys()):
+            del app.storage.user[k]
         return False
 
     # Update activity timestamp on every valid request
@@ -131,8 +133,9 @@ def login(user_id: str, username: str, role: str):
 
 def logout():
     """Clear auth state and redirect to login."""
-    # Bug fix #3: Use clear() to remove ALL session keys cleanly
-    app.storage.user.clear()
+    # Clear the keys from the dict instead of unlinking the file
+    for k in list(app.storage.user.keys()):
+        del app.storage.user[k]
     ui.navigate.to("/login")
 
 
