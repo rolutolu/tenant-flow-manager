@@ -21,6 +21,8 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
 # Bug fix #11: Session secret should come from env, not be hardcoded in source
 STORAGE_SECRET = os.getenv("STORAGE_SECRET", "tenant-flow-change-me-in-production")
+# Invite code required to self-register a new admin account via /register
+INVITE_CODE = os.getenv("INVITE_CODE", "")
 
 # ── Twilio (optional) ─────────────────────────────────────────────────────────
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")

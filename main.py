@@ -23,6 +23,9 @@ from app.pages.actions import actions_page
 from app.pages.admin import admin_page
 from app.pages.settings import settings_page
 from app.pages.audit_log import audit_log_page
+from app.pages.mfa import mfa_page
+from app.pages.register import register_page
+
 
 from nicegui import ui, app as nicegui_app  # noqa: E402
 from app.config import APP_TITLE, APP_HOST, APP_PORT, STORAGE_SECRET  # noqa: E402

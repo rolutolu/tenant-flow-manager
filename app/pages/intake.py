@@ -239,7 +239,7 @@ def intake_page():
                     ui.notify(msg, type="positive" if success else "negative")
 
                 with ui.row().classes("gap-3 mt-2"):
-                    ui.button("Send SMS (Demo)", on_click=send_ref_sms, icon="sms").props("unelevated rounded")
+                    ui.button("Send SMS", on_click=send_ref_sms, icon="sms").props("unelevated rounded")
                     ui.button("Send Email", on_click=send_ref_email_action, icon="email").props("outline rounded")
 
                 refresh_ref_table()

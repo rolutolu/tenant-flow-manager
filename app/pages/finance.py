@@ -168,7 +168,7 @@ def finance_page():
                 {"name": "unit", "label": "Unit", "field": "unit_label", "align": "left"},
                 {"name": "amount", "label": "Amount", "field": "amount", "sortable": True, "align": "right"},
                 {"name": "status", "label": "Status", "field": "status", "align": "center"},
-                {"name": "actions", "label": "Status", "field": "actions", "align": "center"},
+                {"name": "actions", "label": "Actions", "field": "actions", "align": "center"},
             ]
 
             def set_status(e):

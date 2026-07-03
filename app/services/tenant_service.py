@@ -95,14 +95,19 @@ def update_tenant(tenant_id: int, **kwargs) -> bool:
 
 
 def delete_tenant(tenant_id: int, user_id: str = None) -> bool:
-    """Delete a tenant by ID."""
+    """Delete a tenant by ID and automatically vacate their linked unit."""
     client = get_client()
     try:
-        # Get data before deletion for the audit log
+        # Get data before deletion for the audit log and unit reset
         old_data = get_tenant(tenant_id)
         client.table("tenants").delete().eq("id", tenant_id).execute()
         uid = user_id or (old_data["user_id"] if old_data else "unknown")
         log_action(uid, "TENANT_DELETED", "tenant", tenant_id, old_value=old_data)
+
+        # Auto-vacate the linked unit if one exists
+        if old_data and old_data.get("unit_id"):
+            client.table("units").update({"status": "Vacant"}).eq("id", old_data["unit_id"]).execute()
+
         return True
     except Exception:
         return False

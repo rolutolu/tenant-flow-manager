@@ -29,10 +29,7 @@ def dashboard_page():
     # Get user name for greeting (use Jordan for admin default)
     user_data = get_current_user()
     username = user_data.get("username") or "User"
-    if username == "admin":
-        display_name = "Jordan"
-    else:
-        display_name = username.capitalize()
+    display_name = username.capitalize()
 
     with page_layout(title="Dashboard"):
         # Section header renders the Playfair Display serif text and separator line globally
