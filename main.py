@@ -28,17 +28,10 @@ from app.pages.register import register_page
 
 from nicegui import ui, app as nicegui_app  # noqa: E402
 from app.config import APP_TITLE, APP_HOST, APP_PORT, STORAGE_SECRET  # noqa: E402
-from fastapi import Request  # noqa: E402
+
 
 nicegui_app.add_static_files("/static", "static")
 
-# ── Dark mode persistence endpoint ──────────────────────────────────────────
-@nicegui_app.post("/api/dark-mode")
-async def set_dark_mode(request: Request, enabled: str = "true"):
-    """Persist dark mode preference to user storage."""
-    from nicegui import app as _app
-    _app.storage.user["dark_mode"] = (enabled.lower() == "true")
-    return {"ok": True}
 
 if __name__ in {"__main__", "__mp_main__"}:
     ui.run(
