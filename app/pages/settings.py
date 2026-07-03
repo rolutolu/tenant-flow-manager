@@ -93,3 +93,47 @@ def settings_page():
                 ui.label("2. Open the verification email from Amazon Web Services and click the link.")
                 ui.label("3. Click Refresh Status — when verified, all your outbound emails use this address.")
                 ui.label("4. Leases, rent notices, NSF alerts, and reference emails include your footer.")
+
+        # ── Notification Preferences ───────────────────────────────────────────
+        section_header("Notification Preferences", "Control which setup nudges appear on your dashboard")
+
+        from nicegui import app as nicegui_app
+        _BANNER_MUTE_KEY = "dashboard_banners_muted"
+
+        with ui.card().classes("w-full p-6 max-w-xl").style(
+            f"background: {CARD_BG}; border: 1px solid {BORDER}"
+        ):
+            ui.label("Dashboard setup banners").classes("font-semibold mb-1")
+            ui.label(
+                "When enabled, Virix shows banner notifications on your dashboard if tenant data "
+                "or Meta marketing tokens are missing. Turn this off to hide them permanently."
+            ).classes("text-sm mb-4").style(f"color: {TEXT_SECONDARY}")
+
+            currently_muted = nicegui_app.storage.user.get(_BANNER_MUTE_KEY, False)
+
+            mute_toggle = ui.switch(
+                "Mute all setup banners",
+                value=currently_muted,
+            )
+
+            status_msg = ui.label(
+                "Banners are currently muted." if currently_muted else "Banners are currently shown."
+            ).classes("text-sm mt-2").style(
+                f"color: {WARNING if currently_muted else SUCCESS}"
+            )
+
+            def on_mute_toggle(e):
+                nicegui_app.storage.user[_BANNER_MUTE_KEY] = e.value
+                # Also clear individual dismissals so they show again if un-muted
+                if not e.value:
+                    nicegui_app.storage.user.pop("banner_import_dismissed", None)
+                    nicegui_app.storage.user.pop("banner_meta_dismissed", None)
+                status_msg.text = "Banners are currently muted." if e.value else "Banners are currently shown."
+                status_msg.style(f"color: {WARNING if e.value else SUCCESS}")
+                ui.notify(
+                    "Setup banners muted." if e.value else "Setup banners re-enabled.",
+                    type="info",
+                )
+
+            mute_toggle.on("update:model-value", on_mute_toggle)
+
