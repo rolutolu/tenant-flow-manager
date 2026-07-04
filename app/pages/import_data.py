@@ -273,18 +273,27 @@ def import_page():
                                 ).classes("mt-6").props("outline rounded")
 
                     # ── Upload widget ─────────────────────────────────────────
-                    def handle_upload(e):
+                    async def handle_upload(e):
                         try:
-                            # NiceGUI UploadEventArguments: e.name, e.content (file-like)
-                            e.content.seek(0)
-                            content = e.content.read()
-                            name = e.name or "data.csv"
+                            # e.content.read() is async in NiceGUI 2+
+                            name = getattr(e, 'name', None) or 'data.csv'
+                            read = e.content.read
+                            import asyncio, inspect
+                            if inspect.iscoroutinefunction(read):
+                                content = await read()
+                            else:
+                                e.content.seek(0)
+                                content = read()
+
                             if not content:
                                 ui.notify("File is empty — please check the file and try again.", type="negative")
                                 return
-                            df = parse_file(content, name)
+                            df, parse_err = parse_file(content, name)
                             if df is None or df.empty:
-                                ui.notify("Could not parse the file. Make sure it is a valid .csv or .xlsx.", type="negative")
+                                ui.notify(
+                                    f"Could not parse '{name}': {parse_err or 'file appears empty after parsing.'}",
+                                    type="negative",
+                                )
                                 return
 
                             ss.update({
@@ -361,12 +370,16 @@ def import_page():
 
                     raw_status = ui.column().classes("w-full mt-2")
 
-                    def handle_raw_upload(e):
+                    async def handle_raw_upload(e):
                         try:
-                            # NiceGUI UploadEventArguments: e.name, e.content (file-like)
-                            e.content.seek(0)
-                            content = e.content.read()
-                            name = e.name or "upload"
+                            name = getattr(e, 'name', None) or 'upload'
+                            read = e.content.read
+                            import asyncio, inspect
+                            if inspect.iscoroutinefunction(read):
+                                content = await read()
+                            else:
+                                e.content.seek(0)
+                                content = read()
                             sub_id = submit_raw_file(user_id, name, content)
                             raw_status.clear()
                             with raw_status:

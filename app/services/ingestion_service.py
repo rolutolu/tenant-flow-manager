@@ -5,19 +5,24 @@ from app.services.property_service import add_property, add_unit, get_properties
 from app.services.tenant_service import add_tenant
 
 
-def parse_file(content: bytes, filename: str) -> pd.DataFrame | None:
-    """Parse an uploaded file into a pandas DataFrame."""
+def parse_file(content: bytes, filename: str) -> tuple:
+    """Parse an uploaded file into a pandas DataFrame.
+    Returns (df, error_str) — df is None on failure, error_str is empty on success.
+    """
     try:
-        if filename.endswith(".csv"):
+        fname = filename.lower()
+        if fname.endswith(".csv"):
             df = pd.read_csv(io.BytesIO(content))
-        elif filename.endswith((".xls", ".xlsx")):
+        elif fname.endswith((".xls", ".xlsx")):
             df = pd.read_excel(io.BytesIO(content))
         else:
-            return None
-        return df.fillna("")
+            return None, f"Unsupported file type '{filename}'. Upload a .csv, .xls, or .xlsx file."
+        return df.fillna(""), ""
     except Exception as e:
-        print(f"Error parsing file: {e}")
-        return None
+        msg = str(e)
+        print(f"[ERROR] parse_file failed for '{filename}': {msg}")
+        return None, msg
+
 
 
 def build_mapped_rows(df: pd.DataFrame, mapping: dict) -> list[dict]:
