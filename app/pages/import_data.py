@@ -71,8 +71,8 @@ def import_page():
         )
 
         with ui.tabs().classes("w-full mb-6") as tabs:
-            tab_sheet = ui.tab("📊  Spreadsheet", name="sheet")
-            tab_raw   = ui.tab("📁  Documents & Files", name="raw")
+            tab_sheet = ui.tab("sheet", label="📊  Spreadsheet")
+            tab_raw   = ui.tab("raw",   label="📁  Documents & Files")
 
         with ui.tab_panels(tabs, value="sheet").classes("w-full"):
 
