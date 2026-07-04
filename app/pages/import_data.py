@@ -275,18 +275,16 @@ def import_page():
                     # ── Upload widget ─────────────────────────────────────────
                     def handle_upload(e):
                         try:
-                            file_obj = getattr(e, "file", None) or e
-                            content = (
-                                file_obj.read()
-                                if hasattr(file_obj, "read")
-                                else file_obj.content.read()
-                            )
-                            name = getattr(
-                                file_obj, "name", getattr(file_obj, "filename", "data.csv")
-                            )
+                            # NiceGUI UploadEventArguments: e.name, e.content (file-like)
+                            e.content.seek(0)
+                            content = e.content.read()
+                            name = e.name or "data.csv"
+                            if not content:
+                                ui.notify("File is empty — please check the file and try again.", type="negative")
+                                return
                             df = parse_file(content, name)
                             if df is None or df.empty:
-                                ui.notify("File is empty or unreadable.", type="negative")
+                                ui.notify("Could not parse the file. Make sure it is a valid .csv or .xlsx.", type="negative")
                                 return
 
                             ss.update({
@@ -365,15 +363,10 @@ def import_page():
 
                     def handle_raw_upload(e):
                         try:
-                            file_obj = getattr(e, "file", None) or e
-                            content = (
-                                file_obj.read()
-                                if hasattr(file_obj, "read")
-                                else file_obj.content.read()
-                            )
-                            name = getattr(
-                                file_obj, "name", getattr(file_obj, "filename", "upload")
-                            )
+                            # NiceGUI UploadEventArguments: e.name, e.content (file-like)
+                            e.content.seek(0)
+                            content = e.content.read()
+                            name = e.name or "upload"
                             sub_id = submit_raw_file(user_id, name, content)
                             raw_status.clear()
                             with raw_status:

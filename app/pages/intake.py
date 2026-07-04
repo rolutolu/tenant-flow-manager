@@ -92,9 +92,9 @@ def intake_page():
 
                 def handle_upload(e: events.UploadEventArguments, doc_type: str):
                     try:
-                        file_obj = getattr(e, "file", None) or e
-                        content = file_obj.read() if hasattr(file_obj, "read") else file_obj.content.read()
-                        file_name = getattr(file_obj, "name", getattr(file_obj, "filename", "document"))
+                        e.content.seek(0)
+                        content = e.content.read()
+                        file_name = e.name or "document"
                         uploaded_files[doc_type] = {"name": file_name, "content": content}
                         if doc_type in ready_indicators:
                             ready_indicators[doc_type].set_visibility(True)
