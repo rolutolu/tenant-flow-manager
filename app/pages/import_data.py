@@ -272,11 +272,67 @@ def import_page():
                                     icon="upload_file",
                                 ).classes("mt-6").props("outline rounded")
 
+                    def _show_fallback(filename: str, file_bytes: bytes, error_msg: str):
+                        confirm_area.clear()
+                        mapper_area.clear()
+                        preview_area.clear()
+                        with confirm_area:
+                            with ui.card().classes("w-full p-6 shadow-sm rounded-xl").style(
+                                f"background: {CARD_BG}; border: 1px solid #FFE4E6"  # soft rose border
+                            ):
+                                with ui.row().classes("items-center gap-3 mb-2"):
+                                    ui.icon("warning", size="28px").style("color: #F43F5E")
+                                    ui.label("Auto-Parsing Failed").classes("text-lg font-bold").style("color: #9F1239")
+                                
+                                ui.label(
+                                    f"We couldn't parse '{filename}' automatically: {error_msg or 'No rows found.'}"
+                                ).classes("text-sm mb-3").style(f"color: {TEXT_SECONDARY}")
+                                
+                                ui.label(
+                                    "Would you like to send this file directly to Virix for manual review and import instead?"
+                                ).classes("text-sm mb-5 font-medium")
+                                
+                                async def handle_fallback_submit():
+                                    ui.notify("Submitting for manual import...", type="info")
+                                    sub_id = submit_raw_file(user_id, filename, file_bytes)
+                                    if sub_id:
+                                        confirm_area.clear()
+                                        with confirm_area:
+                                            with ui.card().classes("w-full p-8 items-center text-center shadow-sm").style(
+                                                f"background: {CARD_BG}; border: 1px solid {BORDER}"
+                                            ):
+                                                ui.icon("cloud_done", size="56px").style(f"color: {SUCCESS}")
+                                                ui.label("File Submitted for Manual Review").classes("text-2xl font-bold mt-3")
+                                                ui.label(
+                                                    f"'{filename}' has been sent to Virix. "
+                                                    "Our team will manually review and import your data shortly."
+                                                ).classes("text-sm mt-2 max-w-md").style(f"color: {TEXT_SECONDARY}")
+                                                ui.button(
+                                                    "Submit Another File",
+                                                    on_click=lambda: ui.navigate.to("/import"),
+                                                    icon="upload_file",
+                                                ).classes("mt-6").props("outline rounded")
+                                    else:
+                                        ui.notify("Failed to submit file for manual review.", type="negative")
+
+                                with ui.row().classes("gap-3"):
+                                    ui.button(
+                                        "Submit for Manual Import", 
+                                        on_click=handle_fallback_submit,
+                                        icon="forward_to_inbox"
+                                    ).props("unelevated rounded")
+                                    ui.button(
+                                        "Try Another File", 
+                                        on_click=lambda: ui.navigate.to("/import"),
+                                        icon="replay"
+                                    ).props("outline rounded color=grey")
+
                     # ── Upload widget ─────────────────────────────────────────
                     async def handle_upload(e):
+                        name = "data.csv"
+                        content = b""
                         try:
-                            # e.file is a Starlette UploadFile
-                            name = e.file.filename or "data.csv"
+                            name = getattr(e.file, "name", None) or getattr(e.file, "filename", None) or "data.csv"
                             content = await e.file.read()
 
                             if not content:
@@ -285,10 +341,7 @@ def import_page():
 
                             df, parse_err = parse_file(content, name)
                             if df is None or df.empty:
-                                ui.notify(
-                                    f"Could not parse '{name}': {parse_err or 'file appears empty after parsing.'}",
-                                    type="negative",
-                                )
+                                _show_fallback(name, content, parse_err)
                                 return
 
                             ss.update({
@@ -327,7 +380,7 @@ def import_page():
                                 type="positive",
                             )
                         except Exception as err:
-                            ui.notify(f"Failed to process file: {str(err)}", type="negative")
+                            _show_fallback(name, content, str(err))
 
                     ui.upload(
                         label="Drag & Drop .csv or .xlsx",

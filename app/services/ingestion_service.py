@@ -12,11 +12,48 @@ def parse_file(content: bytes, filename: str) -> tuple:
     try:
         fname = filename.lower()
         if fname.endswith(".csv"):
-            df = pd.read_csv(io.BytesIO(content))
+            df = None
+            err = None
+            for encoding in ['utf-8', 'latin-1', 'cp1252', 'utf-16']:
+                try:
+                    df = pd.read_csv(io.BytesIO(content), encoding=encoding)
+                    break
+                except Exception as e:
+                    err = e
+            if df is None:
+                return None, f"CSV parsing error: {err}"
         elif fname.endswith((".xls", ".xlsx")):
-            df = pd.read_excel(io.BytesIO(content))
+            try:
+                sheets_dict = pd.read_excel(io.BytesIO(content), sheet_name=None)
+            except Exception as e:
+                return None, f"Excel parsing error: {e}"
+            
+            if not sheets_dict:
+                return None, "No sheets found in the Excel file."
+            
+            best_sheet_name = None
+            best_df = None
+            max_size = -1
+            
+            for sheet_name, df_sheet in sheets_dict.items():
+                df_sheet = df_sheet.dropna(how='all', axis=0).dropna(how='all', axis=1)
+                size = df_sheet.shape[0] * df_sheet.shape[1]
+                if size > max_size:
+                    max_size = size
+                    best_df = df_sheet
+                    best_sheet_name = sheet_name
+            
+            if best_df is None or best_df.empty:
+                first_sheet = list(sheets_dict.keys())[0]
+                df = sheets_dict[first_sheet]
+            else:
+                df = best_df
+                print(f"[INGESTION] Selected sheet '{best_sheet_name}' with shape {df.shape}")
         else:
             return None, f"Unsupported file type '{filename}'. Upload a .csv, .xls, or .xlsx file."
+        
+        df = df.dropna(how='all', axis=0)
+        df.columns = [str(c).strip() for c in df.columns]
         return df.fillna(""), ""
     except Exception as e:
         msg = str(e)

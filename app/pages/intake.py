@@ -92,8 +92,7 @@ def intake_page():
 
                 async def handle_upload(e: events.UploadEventArguments, doc_type: str):
                     try:
-                        # e.file is a Starlette UploadFile
-                        file_name = e.file.filename or "document"
+                        file_name = getattr(e.file, "name", None) or getattr(e.file, "filename", None) or "document"
                         content = await e.file.read()
                         uploaded_files[doc_type] = {"name": file_name, "content": content}
                         if doc_type in ready_indicators:
