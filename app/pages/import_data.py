@@ -275,19 +275,14 @@ def import_page():
                     # ── Upload widget ─────────────────────────────────────────
                     async def handle_upload(e):
                         try:
-                            # e.content.read() is async in NiceGUI 2+
-                            name = getattr(e, 'name', None) or 'data.csv'
-                            read = e.content.read
-                            import asyncio, inspect
-                            if inspect.iscoroutinefunction(read):
-                                content = await read()
-                            else:
-                                e.content.seek(0)
-                                content = read()
+                            # e.file is a Starlette UploadFile
+                            name = e.file.filename or "data.csv"
+                            content = await e.file.read()
 
                             if not content:
                                 ui.notify("File is empty — please check the file and try again.", type="negative")
                                 return
+
                             df, parse_err = parse_file(content, name)
                             if df is None or df.empty:
                                 ui.notify(
@@ -372,14 +367,9 @@ def import_page():
 
                     async def handle_raw_upload(e):
                         try:
-                            name = getattr(e, 'name', None) or 'upload'
-                            read = e.content.read
-                            import asyncio, inspect
-                            if inspect.iscoroutinefunction(read):
-                                content = await read()
-                            else:
-                                e.content.seek(0)
-                                content = read()
+                            # e.file is a Starlette UploadFile
+                            name = e.file.filename or "upload"
+                            content = await e.file.read()
                             sub_id = submit_raw_file(user_id, name, content)
                             raw_status.clear()
                             with raw_status:
