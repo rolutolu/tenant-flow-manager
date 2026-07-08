@@ -36,12 +36,27 @@ GLOBAL_CSS = """
     --text-primary: #1C1915;
     --text-secondary: #827B77;
     --border: #E6E4DF;
-    --header-bg: #120E0C;
+    --header-bg: #FFFFFF;
+    --header-border: #E6E4DF;
+    --header-text: #1C1915;
+    --header-nav-text: #827B77;
+    --header-nav-hover: #120E0C;
+    --header-menu-btn-bg: #EAE8E3;
+    --header-menu-btn-border: #E6E4DF;
+    --header-menu-btn-icon: #1C1915;
     --metric-line: #E6E4DF;
     --scrollbar-thumb: #CBD5E1;
     --scrollbar-thumb-hover: #94A3B8;
-    --action-bar-bg: #1A1714;
-    --action-bar-border: rgba(255,255,255,0.06);
+    --action-bar-bg: #FFFFFF;
+    --action-bar-border: #E6E4DF;
+    --action-bar-btn-bg: rgba(18, 14, 12, 0.04);
+    --action-bar-btn-border: rgba(18, 14, 12, 0.08);
+    --action-bar-btn-color: #1C1915;
+    --action-bar-btn-hover-bg: rgba(18, 14, 12, 0.08);
+    --action-bar-btn-hover-border: rgba(18, 14, 12, 0.15);
+    --action-bar-btn-hover-color: #120E0C;
+    --action-bar-text-label: #827B77;
+    --action-bar-separator: rgba(18, 14, 12, 0.08);
     --card-shadow: rgba(26,22,21,0.03);
     --card-shadow-hover: rgba(26,22,21,0.06);
     --icon-bg: linear-gradient(135deg, #120E0C18, #120E0C08);
@@ -56,11 +71,26 @@ GLOBAL_CSS = """
     --text-secondary: #8A8480;
     --border: #2C2825;
     --header-bg: #0A0908;
+    --header-border: rgba(255,255,255,0.06);
+    --header-text: #FFFFFF;
+    --header-nav-text: #D6D3D1;
+    --header-nav-hover: #FFFFFF;
+    --header-menu-btn-bg: #2A2A2A;
+    --header-menu-btn-border: rgba(255,255,255,0.1);
+    --header-menu-btn-icon: #FFFFFF;
     --metric-line: #2C2825;
     --scrollbar-thumb: #3A3633;
     --scrollbar-thumb-hover: #5A5450;
     --action-bar-bg: #131110;
     --action-bar-border: rgba(255,255,255,0.04);
+    --action-bar-btn-bg: rgba(255, 255, 255, 0.04);
+    --action-bar-btn-border: rgba(255, 255, 255, 0.08);
+    --action-bar-btn-color: #D6D3D1;
+    --action-bar-btn-hover-bg: rgba(255, 255, 255, 0.10);
+    --action-bar-btn-hover-border: rgba(255, 255, 255, 0.18);
+    --action-bar-btn-hover-color: #FFFFFF;
+    --action-bar-text-label: #8A8480;
+    --action-bar-separator: rgba(255, 255, 255, 0.08);
     --card-shadow: rgba(0,0,0,0.2);
     --card-shadow-hover: rgba(0,0,0,0.35);
     --icon-bg: linear-gradient(135deg, #C9A96E22, #C9A96E0A);
@@ -94,9 +124,24 @@ div[style*="nicegui"] { display: none !important; }
 .q-header {
     background-color: var(--header-bg) !important;
     box-shadow: none !important;
-    border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+    border-bottom: 1px solid var(--header-border) !important;
 }
 .q-layout__section--marginal { background-color: transparent !important; }
+
+.nav-link {
+    color: var(--header-nav-text) !important;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: color 0.18s ease;
+    text-transform: uppercase;
+    text-decoration: none;
+}
+.nav-link:hover {
+    color: var(--header-nav-hover) !important;
+}
 
 /* Action bar (sub-header) */
 .action-bar {
@@ -120,9 +165,9 @@ div[style*="nicegui"] { display: none !important; }
     padding: 0 0.85rem;
     height: 32px;
     border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.04);
-    color: #D6D3D1;
+    border: 1px solid var(--action-bar-btn-border);
+    background: var(--action-bar-btn-bg);
+    color: var(--action-bar-btn-color);
     font-family: 'Inter', sans-serif;
     font-size: 0.72rem;
     font-weight: 600;
@@ -134,9 +179,9 @@ div[style*="nicegui"] { display: none !important; }
     text-decoration: none;
 }
 .action-bar-btn:hover {
-    background: rgba(255,255,255,0.10);
-    border-color: rgba(255,255,255,0.18);
-    color: #FFFFFF;
+    background: var(--action-bar-btn-hover-bg);
+    border-color: var(--action-bar-btn-hover-border);
+    color: var(--action-bar-btn-hover-color);
     transform: translateY(-1px);
 }
 .action-bar-btn .material-icons {
@@ -163,9 +208,9 @@ div[style*="nicegui"] { display: none !important; }
     padding: 0 0.75rem;
     height: 30px;
     border-radius: 15px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.05);
-    color: #9A9590;
+    border: 1px solid var(--action-bar-btn-border);
+    background: var(--action-bar-btn-bg);
+    color: var(--action-bar-btn-color);
     font-size: 0.68rem;
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -175,8 +220,8 @@ div[style*="nicegui"] { display: none !important; }
     white-space: nowrap;
 }
 .dark-toggle:hover {
-    background: rgba(255,255,255,0.10);
-    color: #D6D3D1;
+    background: var(--action-bar-btn-hover-bg);
+    color: var(--action-bar-btn-hover-color);
 }
 .dark-toggle .material-icons {
     font-size: 14px !important;
@@ -391,7 +436,7 @@ def page_layout(title: str = ""):
             )
             # Text block
             with ui.column().classes("gap-0"):
-                ui.html('<div style="font-family: \'Playfair Display\', serif; font-style: italic; font-weight: 600; font-size: 1.4rem; color: #FFFFFF; line-height: 1; margin-top: -2px;">Virix.</div>')
+                ui.html('<div style="font-family: \'Playfair Display\', serif; font-style: italic; font-weight: 600; font-size: 1.4rem; color: var(--header-text); line-height: 1; margin-top: -2px;">Virix.</div>')
                 ui.label("PROPERTY SUITE").classes("text-[9px] font-bold tracking-widest uppercase").style("color: #827B77; line-height: 1; margin-top: 1px;")
 
         # Navigation menu centered/right
@@ -412,18 +457,16 @@ def page_layout(title: str = ""):
         with ui.row().classes("items-center gap-8 hidden md:flex").style("margin-left: auto; margin-right: 2.5rem;"):
             for item in nav_items:
                 if item["path"] in allowed_paths:
-                    ui.label(item["label"].upper()).classes("text-[11px] font-semibold tracking-widest cursor-pointer hover:text-white transition-colors").style(
-                        "color: #D6D3D1; font-family: 'Inter', sans-serif;"
-                    ).on("click", lambda _, p=item["path"]: ui.navigate.to(p))
+                    ui.label(item["label"].upper()).classes("nav-link").on("click", lambda _, p=item["path"]: ui.navigate.to(p))
 
         # Hamburger menu button on the right
         with ui.element("div").style(
-            "background-color: #2A2A2A; border: 1px solid rgba(255,255,255,0.1); "
+            "background-color: var(--header-menu-btn-bg); border: 1px solid var(--header-menu-btn-border); "
             "width: 34px; height: 34px; border-radius: 50%; cursor: pointer; "
             "display: flex; align-items: center; justify-content: center; "
             "flex-shrink: 0;"
         ):
-            ui.icon("menu", size="20px").style("color: white; display: block;")
+            ui.icon("menu", size="20px").style("color: var(--header-menu-btn-icon); display: block;")
             with ui.menu().classes("w-48"):
                 ui.menu_item("Dashboard", on_click=lambda: ui.navigate.to("/")).classes("text-sm")
                 if role in ("superadmin", "admin"):
@@ -480,9 +523,9 @@ def _render_action_bar(role: str):
 
     with ui.element("div").classes("action-bar"):
         # Separator label
-        ui.html('<span style="font-size:0.62rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#5A5450;margin-right:0.5rem;white-space:nowrap;">Quick&nbsp;Access</span>')
+        ui.html('<span style="font-size:0.62rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--action-bar-text-label);margin-right:0.5rem;white-space:nowrap;">Quick&nbsp;Access</span>')
 
-        ui.html('<div style="width:1px;height:20px;background:rgba(255,255,255,0.07);margin-right:0.5rem;"></div>')
+        ui.html('<div style="width:1px;height:20px;background:var(--action-bar-separator);margin-right:0.5rem;"></div>')
 
         for btn in action_buttons:
             accent_class = "action-bar-btn accent-btn" if btn["accent"] else "action-bar-btn"
