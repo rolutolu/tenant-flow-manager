@@ -6,8 +6,7 @@ Run with:  python main.py
 
 from app.auth import ensure_admin_exists
 
-# Ensure default admin user exists in Supabase
-ensure_admin_exists()
+# Ensure default admin user exists in Supabase (will run on startup event)
 
 # Import all page modules so their @ui.page decorators register routes
 from app.pages.login import login_page
@@ -31,6 +30,7 @@ from app.config import APP_TITLE, APP_HOST, APP_PORT, STORAGE_SECRET  # noqa: E4
 
 
 nicegui_app.add_static_files("/static", "static")
+nicegui_app.on_startup(ensure_admin_exists)
 
 
 if __name__ in {"__main__", "__mp_main__"}:
