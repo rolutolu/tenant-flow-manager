@@ -34,12 +34,14 @@ nicegui_app.add_static_files("/static", "static")
 
 
 if __name__ in {"__main__", "__mp_main__"}:
+    import os
+    is_dev = os.getenv("PORT") is None or os.getenv("DEBUG", "false").lower() == "true"
     ui.run(
         title=APP_TITLE,
         host=APP_HOST,
         port=APP_PORT,
         dark=None,
         storage_secret=STORAGE_SECRET,
-        reload=True,
+        reload=is_dev,
         show_welcome_message=False,
     )
