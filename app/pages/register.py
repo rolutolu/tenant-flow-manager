@@ -11,6 +11,7 @@ from nicegui import ui, app as nicegui_app
 from app.auth import create_user
 from app.config import INVITE_CODE
 from app.theme import GLOBAL_CSS, PRIMARY, ACCENT, SUCCESS, DANGER, TEXT_SECONDARY
+from app.services.rate_limit_service import get_client_ip, check_rate_limit, record_attempt
 
 
 @ui.page("/register")
@@ -109,8 +110,23 @@ def register_page():
             def handle_register():
                 result_label.set_visibility(False)
 
+                ip = get_client_ip()
+                ip_key = f"register_ip:{ip}"
+
+                # Check registration rate limit (3 attempts per 10 mins)
+                ok, retry_after = check_rate_limit(ip_key, 3, 600)
+                if not ok:
+                    result_label.text = f"Too many registration attempts. Please wait {retry_after} seconds."
+                    result_label.style(f"color: {DANGER}")
+                    result_label.set_visibility(True)
+                    ui.notify("Registration rate limit exceeded.", type="negative")
+                    return
+
+                record_attempt(ip_key)
+
                 # Validate invite code
                 if invite_input.value.strip() != INVITE_CODE:
+
                     result_label.text = "Invalid invite code. Please check with your Virix representative."
                     result_label.style(f"color: {DANGER}")
                     result_label.set_visibility(True)

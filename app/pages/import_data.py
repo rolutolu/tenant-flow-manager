@@ -19,6 +19,7 @@ from app.services.ingestion_service import parse_file, build_mapped_rows
 from app.services.import_submission_service import (
     submit_spreadsheet, submit_raw_file, get_user_submissions,
 )
+from app.services.rate_limit_service import check_rate_limit, record_attempt
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -332,6 +333,14 @@ def import_page():
                         name = "data.csv"
                         content = b""
                         try:
+                            # Rate limiting: limit to 10 uploads per 10 minutes per user
+                            user_key = f"upload_user:{user_id}"
+                            ok, retry_after = check_rate_limit(user_key, 10, 600)
+                            if not ok:
+                                ui.notify(f"Upload rate limit exceeded. Please wait {retry_after} seconds.", type="negative")
+                                return
+
+                            record_attempt(user_key)
                             name = getattr(e.file, "name", None) or getattr(e.file, "filename", None) or "data.csv"
                             content = await e.file.read()
 
@@ -420,8 +429,15 @@ def import_page():
 
                     async def handle_raw_upload(e):
                         try:
-                            # e.file is a Starlette UploadFile
-                            name = e.file.filename or "upload"
+                            # Rate limiting: limit to 10 uploads per 10 minutes per user
+                            user_key = f"upload_user:{user_id}"
+                            ok, retry_after = check_rate_limit(user_key, 10, 600)
+                            if not ok:
+                                ui.notify(f"Upload rate limit exceeded. Please wait {retry_after} seconds.", type="negative")
+                                return
+
+                            record_attempt(user_key)
+                            name = getattr(e.file, "name", None) or getattr(e.file, "filename", None) or "upload"
                             content = await e.file.read()
                             sub_id = submit_raw_file(user_id, name, content)
                             raw_status.clear()

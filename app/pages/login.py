@@ -1,13 +1,14 @@
-"""Login page — username/password authentication."""
+"""Login page — username/password authentication with rate limiting protection."""
 
 from nicegui import ui
 from app.auth import attempt_login, is_authenticated
 from app.theme import PRIMARY, ACCENT, TEXT_SECONDARY, GLOBAL_CSS
+from app.services.rate_limit_service import get_client_ip, check_rate_limit, record_attempt, clear_attempts
 
 
 @ui.page("/login")
 def login_page():
-    """Render the login screen."""
+    """Render the login screen with rate limit protection."""
     if is_authenticated():
         ui.navigate.to("/")
         return
@@ -66,10 +67,42 @@ def login_page():
                 error_label.set_visibility(False)
 
                 def handle_login():
-                    success, msg = attempt_login(username_input.value, password_input.value)
+                    error_label.set_visibility(False)
+                    username = username_input.value.strip()
+                    password = password_input.value
+
+                    if not username:
+                        error_label.text = "Username is required."
+                        error_label.set_visibility(True)
+                        return
+
+                    ip = get_client_ip()
+                    ip_key = f"login_ip:{ip}"
+                    user_key = f"login_user:{username.lower()}"
+
+                    # 1. Check IP rate limit (15 attempts/5 mins)
+                    ip_ok, ip_retry = check_rate_limit(ip_key, 15, 300)
+                    if not ip_ok:
+                        error_label.text = f"Too many login attempts. Please wait {ip_retry} seconds."
+                        error_label.set_visibility(True)
+                        return
+
+                    # 2. Check Username rate limit (5 failed attempts/15 mins)
+                    user_ok, user_retry = check_rate_limit(user_key, 5, 900)
+                    if not user_ok:
+                        error_label.text = f"Account temporarily locked. Please wait {user_retry} seconds."
+                        error_label.set_visibility(True)
+                        return
+
+                    record_attempt(ip_key)
+
+                    success, msg = attempt_login(username, password)
                     if success:
+                        clear_attempts(ip_key)
+                        clear_attempts(user_key)
                         ui.navigate.to("/")
                     else:
+                        record_attempt(user_key)
                         error_label.text = msg
                         error_label.set_visibility(True)
 
@@ -86,4 +119,5 @@ def login_page():
                 ui.label("Secured by Supabase").classes("text-xs").style(
                     "color: #827B77"
                 )
+
 
