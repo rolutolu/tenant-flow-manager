@@ -18,6 +18,33 @@ from app.services.rate_limit_service import get_client_ip, check_rate_limit, rec
 def register_page():
     """Public invite-code registration page — creates the first admin for a new client."""
     ui.add_head_html(f"<style>{GLOBAL_CSS}</style>")
+    ui.add_head_html("""
+    <style>
+    /* Force inputs on login/register to have dark text and labels, ignoring body.dark-mode */
+    .q-field__native, .q-field__prefix, .q-field__suffix, .q-field__input {
+        color: #1C1915 !important;
+    }
+    .q-field__label {
+        color: #827B77 !important;
+    }
+    .q-field__bottom {
+        color: #827B77 !important;
+    }
+    .q-field__native::placeholder, .q-field__input::placeholder {
+        color: #A8A29E !important;
+        opacity: 1 !important;
+    }
+    .q-field--outlined .q-field__control:before {
+        border: 1px solid #D6D3D1 !important;
+    }
+    .q-field--outlined .q-field__control:hover:before {
+        border: 1px solid #1C1915 !important;
+    }
+    .q-field--focused .q-field__control:after {
+        border: 2px solid #120E0C !important;
+    }
+    </style>
+    """)
     ui.add_head_html("<title>Create Account — Virix</title>")
 
     # ── Gate: invite code must be configured ──────────────────────────────────
