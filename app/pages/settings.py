@@ -20,6 +20,21 @@ def settings_page():
     with page_layout(title="Settings"):
         section_header("Email Settings", "Send notices from your own address with a custom footer")
 
+        # ── Roadmap / Upcoming Features Notice ─────────────────────────────
+        with ui.card().classes("w-full p-4 mb-4 max-w-xl").style(
+            "background: rgba(18, 14, 12, 0.03); border: 1px dashed var(--border); border-radius: 12px; box-shadow: none;"
+        ):
+            with ui.row().classes("items-center gap-3"):
+                ui.icon("info", size="20px").style("color: var(--text-secondary);")
+                with ui.column().classes("gap-0"):
+                    ui.label("Coming Soon: Automated Email Sending & Bank Email Scanning").classes("font-semibold text-xs").style(
+                        "color: var(--text-primary);"
+                    )
+                    ui.label(
+                        "Full automated email broadcasting and direct integration to scan incoming bank deposit alert emails "
+                        "are soon-to-be-implemented features currently in active development."
+                    ).classes("text-[11px]").style("color: var(--text-secondary);")
+
         if not is_ses_configured():
             with ui.card().classes("w-full p-4 mb-4").style("background: #FFFBEB; border: 1px solid #FDE68A;"):
                 ui.label(

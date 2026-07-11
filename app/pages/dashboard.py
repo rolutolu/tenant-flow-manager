@@ -39,6 +39,21 @@ def dashboard_page():
         # ── Setup Banners ───────────────────────────────────────────────────
         _render_setup_banners(user_id, role)
 
+        # ── Roadmap / Upcoming Features Notice ─────────────────────────────
+        with ui.card().classes("w-full p-4 mb-4").style(
+            "background: rgba(18, 14, 12, 0.03); border: 1px dashed var(--border); border-radius: 12px; box-shadow: none;"
+        ):
+            with ui.row().classes("items-center gap-3"):
+                ui.icon("info", size="20px").style("color: var(--text-secondary);")
+                with ui.column().classes("gap-0"):
+                    ui.label("Coming Soon: Automated Email Sending & Bank Email Scanning").classes("font-semibold text-xs").style(
+                        "color: var(--text-primary);"
+                    )
+                    ui.label(
+                        "Full automated email broadcasting and direct integration to scan incoming bank deposit alert emails "
+                        "are soon-to-be-implemented features currently in active development."
+                    ).classes("text-[11px]").style("color: var(--text-secondary);")
+
         # ── Metrics Row (Mockup Style: Units, Occupancy, MRR, Tickets) ──
         all_units = get_all_units(user_id)
         total_units = len(all_units)

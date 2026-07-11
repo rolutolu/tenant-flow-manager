@@ -30,7 +30,19 @@ from app.config import APP_TITLE, APP_HOST, APP_PORT, STORAGE_SECRET  # noqa: E4
 
 
 nicegui_app.add_static_files("/static", "static")
-nicegui_app.on_startup(ensure_admin_exists)
+
+import asyncio
+
+async def run_startup_checks():
+    # Wait 2 seconds to ensure the network interface is fully operational inside the VM
+    await asyncio.sleep(2)
+    try:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, ensure_admin_exists)
+    except Exception as e:
+        print(f"[ERROR] Startup database check failed: {e}")
+
+nicegui_app.on_startup(run_startup_checks)
 
 
 if __name__ in {"__main__", "__mp_main__"}:
