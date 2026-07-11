@@ -16,7 +16,7 @@ def get_client_ip() -> str:
         if not client or not client.request:
             return "127.0.0.1"
 
-        # Check standard headers set by reverse proxies (Railway, Render, Fly.io, Cloudflare)
+        # Check standard headers set by reverse proxies (Railway, Render, Cloudflare)
         x_forwarded_for = client.request.headers.get("x-forwarded-for")
         if x_forwarded_for:
             # First IP is the actual client
