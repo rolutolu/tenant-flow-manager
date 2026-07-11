@@ -28,6 +28,12 @@ def add_tenant(user_id: str, name: str, unit: str, rent_amount: float,
     response = client.table("tenants").insert(data).execute()
     tenant_id = response.data[0]["id"]
     log_action(user_id, "TENANT_ADDED", "tenant", tenant_id, new_value={"name": name, "unit": unit})
+    if unit_id:
+        try:
+            client.table("units").update({"status": "Occupied"}).eq("id", unit_id).execute()
+            log_action(user_id, "UNIT_STATUS_CHANGED", "unit", unit_id, new_value={"status": "Occupied"})
+        except Exception as e:
+            print(f"Error setting unit {unit_id} status to Occupied: {e}")
     return tenant_id
 
 
