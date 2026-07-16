@@ -4,10 +4,6 @@ A property management application built with NiceGUI + Supabase.
 Run with:  python main.py
 """
 
-from app.auth import ensure_admin_exists
-
-# Ensure default admin user exists in Supabase (will run on startup event)
-
 # Import all page modules so their @ui.page decorators register routes
 from app.pages.login import login_page
 from app.pages.dashboard import dashboard_page
@@ -31,18 +27,6 @@ from app.config import APP_TITLE, APP_HOST, APP_PORT, STORAGE_SECRET  # noqa: E4
 
 nicegui_app.add_static_files("/static", "static")
 
-import asyncio
-
-async def run_startup_checks():
-    # Wait 2 seconds to ensure the network interface is fully operational inside the VM
-    await asyncio.sleep(2)
-    try:
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, ensure_admin_exists)
-    except Exception as e:
-        print(f"[ERROR] Startup database check failed: {e}")
-
-nicegui_app.on_startup(run_startup_checks)
 
 
 if __name__ in {"__main__", "__mp_main__"}:

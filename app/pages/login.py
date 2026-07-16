@@ -1,6 +1,6 @@
 """Login page — username/password authentication with rate limiting protection."""
 
-from nicegui import ui
+from nicegui import ui, run
 from app.auth import attempt_login, is_authenticated
 from app.theme import PRIMARY, ACCENT, TEXT_SECONDARY, GLOBAL_CSS
 from app.services.rate_limit_service import get_client_ip, check_rate_limit, record_attempt, clear_attempts
@@ -79,14 +79,14 @@ def login_page():
             username_input = ui.input(
                 label="Username",
                 placeholder="Enter your username",
-            ).classes("w-full").props("outlined")
+            ).classes("w-full").props("outlined stack-label")
 
             password_input = ui.input(
                 label="Password",
                 password=True,
                 password_toggle_button=True,
                 placeholder="Enter your password",
-            ).classes("w-full mt-2").props("outlined")
+            ).classes("w-full mt-2").props("outlined stack-label")
 
             def handle_forgot_password():
                 ui.notify("Password recovery is not fully implemented yet. Please contact your administrator.", type="warning")
@@ -97,7 +97,7 @@ def login_page():
             error_label = ui.label("").classes("text-sm").style("color: #EF4444")
             error_label.set_visibility(False)
 
-            def handle_login():
+            async def handle_login():
                 error_label.set_visibility(False)
                 username = username_input.value.strip()
                 password = password_input.value
@@ -127,7 +127,7 @@ def login_page():
 
                 record_attempt(ip_key)
 
-                success, msg = attempt_login(username, password)
+                success, msg = await run.io_bound(attempt_login, username, password)
                 if success:
                     clear_attempts(ip_key)
                     clear_attempts(user_key)

@@ -171,20 +171,8 @@ ALTER TABLE reference_checks DISABLE ROW LEVEL SECURITY;
 -- Migration for existing databases (safe to re-run)
 ALTER TABLE tenants ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
 
-CREATE TABLE IF NOT EXISTS email_configs (
-    user_id         UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    from_email      TEXT NOT NULL,
-    from_name       TEXT DEFAULT '',
-    reply_to        TEXT DEFAULT '',
-    footer_text     TEXT DEFAULT '',
-    ses_verified    BOOLEAN DEFAULT FALSE,
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE email_configs DISABLE ROW LEVEL SECURITY;
 
--- ── Migration: Phase 3 MFA — add phone_number to users ───────────────────────
--- Safe to re-run. Stores the admin's phone number for Twilio MFA OTP delivery.
-ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number TEXT DEFAULT '';
+
 
 -- ── Grants (required for Supabase API access) ───────────────────────────────
 -- Run this block if you see "permission denied for table ..." errors.

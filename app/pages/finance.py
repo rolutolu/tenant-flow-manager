@@ -4,7 +4,7 @@ import io
 from datetime import datetime
 
 import pandas as pd
-from nicegui import ui
+from nicegui import ui, run
 
 from app.auth import require_role, get_user_id
 from app.theme import page_layout, section_header, CARD_BG, BORDER
@@ -17,9 +17,9 @@ from app.services.notification_service import send_nsf_notice
 
 @ui.page("/finance")
 @require_role("admin", "manager")
-def finance_page():
+async def finance_page():
     user_id = get_user_id()
-    tenants = get_all_tenants(user_id)
+    tenants = await run.io_bound(get_all_tenants, user_id)
     tenant_options = {
         t["id"]: f"{t['name']} (Unit {t['unit']})" for t in tenants
     }
@@ -27,7 +27,7 @@ def finance_page():
     with page_layout(title="Financials & Ledger"):
         section_header("Financial Dashboard", "Track rent payments, late fees, and export accountant-ready reports")
 
-        summary = get_financial_summary(user_id)
+        summary = await run.io_bound(get_financial_summary, user_id)
         with ui.row().classes("w-full gap-6 mb-6 flex-wrap"):
             with ui.card().classes("flex-1 p-6 items-center text-center shadow-sm").style(
                 f"background: {CARD_BG}; border: 1px solid {BORDER}"
@@ -58,18 +58,19 @@ def finance_page():
                     ),
                 ).props("unelevated color=indigo")
 
+                transactions = await run.io_bound(get_transactions, user_id)
+
                 def _flatten_transactions():
-                    txns = get_transactions(user_id)
                     flat = []
-                    for t in txns:
+                    for t in transactions:
                         row = dict(t)
                         row["tenant_name"] = (t.get("tenants") or {}).get("name", "N/A")
                         row["unit_label"] = (t.get("units") or {}).get("unit_number", "N/A")
                         flat.append(row)
-                    return flat, txns
+                    return flat
 
                 def export_csv():
-                    flat, _ = _flatten_transactions()
+                    flat = _flatten_transactions()
                     df = pd.DataFrame(flat)
                     if not df.empty:
                         df = df.drop(columns=["tenants", "units"], errors="ignore")
@@ -77,7 +78,7 @@ def finance_page():
                     ui.download(csv_data.encode("utf-8"), f"financials_{datetime.now().strftime('%Y%m%d')}.csv")
 
                 def export_excel():
-                    flat, _ = _flatten_transactions()
+                    flat = _flatten_transactions()
                     df = pd.DataFrame(flat)
                     if not df.empty:
                         df = df.drop(columns=["tenants", "units"], errors="ignore")
@@ -101,8 +102,9 @@ def finance_page():
             ).classes("w-full mb-2").props("outlined")
             tx_amt = ui.number(label="Amount ($)", value=0).classes("w-full mb-4").props("outlined")
 
-            def save_tx():
-                if add_transaction(user_id, tx_type.value, tx_cat.value, tx_amt.value):
+            async def save_tx():
+                ok = await run.io_bound(add_transaction, user_id, tx_type.value, tx_cat.value, tx_amt.value)
+                if ok:
                     ui.notify("Transaction saved", type="positive")
                     add_tx_dialog.close()
                     ui.navigate.to("/finance")
@@ -117,7 +119,7 @@ def finance_page():
             nsf_amount = ui.number(label="Returned Amount ($)", value=0, min=0).classes("w-full mb-2").props("outlined")
             nsf_penalty = ui.number(label="Admin Fee ($)", value=25, min=0).classes("w-full mb-4").props("outlined")
 
-            def process_nsf():
+            async def process_nsf():
                 if not nsf_tenant.value:
                     return ui.notify("Select a tenant", type="warning")
                 tenant = next((t for t in tenants if t["id"] == nsf_tenant.value), None)
@@ -125,15 +127,18 @@ def finance_page():
                     return ui.notify("Tenant not found", type="negative")
                 amount = nsf_amount.value or 0
                 penalty = nsf_penalty.value or 25
-                add_transaction(
+                await run.io_bound(
+                    add_transaction,
                     user_id, "Charge", "Late Fee", penalty,
                     tenant_id=tenant["id"], notes="NSF administrative fee", status="Pending",
                 )
-                add_transaction(
+                await run.io_bound(
+                    add_transaction,
                     user_id, "Charge", "Rent", amount,
                     tenant_id=tenant["id"], status="Pending", notes="NSF returned payment",
                 )
-                success, msg = send_nsf_notice(
+                success, msg = await run.io_bound(
+                    send_nsf_notice,
                     tenant["name"],
                     tenant["unit"],
                     amount,
@@ -149,7 +154,6 @@ def finance_page():
                 ui.button("Cancel", on_click=nsf_dialog.close).props("flat")
                 ui.button("Send Notice & Charge", on_click=process_nsf).props("unelevated color=warning")
 
-        transactions = get_transactions(user_id)
         if not transactions:
             ui.label("No transactions found.").classes("text-slate-500 italic mt-4")
         else:
@@ -171,12 +175,13 @@ def finance_page():
                 {"name": "actions", "label": "Actions", "field": "actions", "align": "center"},
             ]
 
-            def set_status(e):
+            async def set_status(e):
                 row = e.args
                 new_status = row.get("new_status")
                 if not new_status:
                     return
-                if update_transaction_status(row["id"], new_status):
+                ok = await run.io_bound(update_transaction_status, row["id"], new_status)
+                if ok:
                     ui.notify(f"Status set to {new_status}", type="positive")
                     ui.navigate.to("/finance")
 

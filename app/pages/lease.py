@@ -1,6 +1,6 @@
 """Lease Management page — generate leases, view status, browse documents."""
 
-from nicegui import ui
+from nicegui import ui, run
 from app.auth import require_role, get_user_id
 from app.theme import page_layout, section_header, ACCENT, CARD_BG, BORDER
 from app.services.tenant_service import get_all_tenants, delete_tenant, update_tenant
@@ -17,19 +17,21 @@ from app.models.database import get_client
 
 @ui.page("/lease")
 @require_role("admin", "manager")
-def lease_page():
+async def lease_page():
     user_id = get_user_id()
     doc_browser_id = "document-browser-section"
     last_lease_path = {"path": None}
 
+    # Fetch initial DB state asynchronously
+    all_folders_list = await run.io_bound(list_all_document_folders)
+    tenants = await run.io_bound(get_all_tenants, user_id)
+    properties_list = await run.io_bound(get_properties, user_id)
+    tenant_options = {t["id"]: f"{t['name']} (Unit {t['unit']})" for t in tenants}
+
     with page_layout(title="Lease Management"):
         section_header("Lease Management", "Generate agreements, track signatures, and browse documents")
 
-        all_folders_list = list_all_document_folders()
-        tenants = get_all_tenants(user_id)
-        tenant_options = {t["id"]: f"{t['name']} (Unit {t['unit']})" for t in tenants}
-
-        def refresh_files(selected_val=None):
+        async def refresh_files(selected_val=None):
             file_container.clear()
             folder = selected_val or folder_selector.value
             if not folder:
@@ -38,7 +40,7 @@ def lease_page():
             client = get_client()
             try:
                 path_prefix = f"tenants/{folder}"
-                files = client.storage.from_("documents").list(path_prefix)
+                files = await run.io_bound(client.storage.from_("documents").list, path_prefix)
 
                 with file_container:
                     if files:
@@ -48,7 +50,7 @@ def lease_page():
 
                             filename = f["name"]
                             full_file_path = f"{path_prefix}/{filename}"
-                            doc_record = get_document_by_filepath(full_file_path)
+                            doc_record = await run.io_bound(get_document_by_filepath, full_file_path)
 
                             with ui.row().classes(
                                 "items-center justify-between w-full p-3 rounded-lg hover:bg-slate-50 border border-slate-100"
@@ -58,9 +60,16 @@ def lease_page():
                                     ui.label(filename).classes("text-sm font-medium")
 
                                 with ui.row().classes("gap-1"):
+                                    async def view_file(p=full_file_path):
+                                        url = await run.io_bound(get_signed_url, p)
+                                        if url:
+                                            ui.navigate.to(url, new_tab=True)
+                                        else:
+                                            ui.notify("Could not get file link", type="negative")
+
                                     ui.button(
                                         "View",
-                                        on_click=lambda p=full_file_path: ui.navigate.to(get_signed_url(p), new_tab=True),
+                                        on_click=view_file,
                                     ).props("flat dense color=primary")
 
                                     def confirm_delete(p=full_file_path, doc=doc_record):
@@ -69,12 +78,13 @@ def lease_page():
                                             with ui.row().classes("gap-2 justify-end"):
                                                 ui.button("Cancel", on_click=dlg.close).props("flat")
 
-                                                def do_delete():
-                                                    if doc and delete_document(doc["id"], p):
-                                                        log_action(user_id, "DOCUMENT_DELETED", "document", doc["id"])
+                                                async def do_delete():
+                                                    success = await run.io_bound(delete_document, doc["id"], p) if doc else False
+                                                    if doc and success:
+                                                        await run.io_bound(log_action, user_id, "DOCUMENT_DELETED", "document", doc["id"])
                                                         ui.notify("Document deleted", type="positive")
                                                         dlg.close()
-                                                        refresh_files(folder)
+                                                        await refresh_files(folder)
                                                     else:
                                                         ui.notify("Failed to delete document", type="negative")
 
@@ -89,11 +99,11 @@ def lease_page():
                 with file_container:
                     ui.label(f"Error: {str(err)}").classes("text-negative")
 
-        def handle_jump(e):
+        async def handle_jump(e):
             row_data = e.args
             target = f"{row_data['unit']}_{row_data['name'].replace(' ', '_')}"
             folder_selector.value = target
-            refresh_files(target)
+            await refresh_files(target)
             ui.notify(f"Showing documents for {row_data['name']}")
             ui.run_javascript(
                 f'document.getElementById("{doc_browser_id}").scrollIntoView({{behavior: "smooth"}})'
@@ -108,8 +118,6 @@ def lease_page():
                     with ui.element("div").classes("rounded-xl p-2.5").style(f"background: {ACCENT}18"):
                         ui.icon("description", size="24px", color="primary")
                     ui.label("Generate Lease").classes("text-lg font-semibold")
-
-                properties_list = get_properties(user_id)
                 prop_options = {p["id"]: p["name"] for p in properties_list}
 
                 tenant_picker = ui.select(
@@ -141,24 +149,27 @@ def lease_page():
                 post_gen_row = ui.row().classes("w-full gap-2 mt-2")
                 post_gen_row.set_visibility(False)
 
-                def on_gen():
+                async def on_gen():
                     if not t_name.value or not prop_selector.value or not t_unit.value:
                         return ui.notify("Tenant Name, Property, and Unit Number are required", type="warning")
                     if not t_start.value or not t_end.value:
                         return ui.notify("Lease start and end dates are required", type="warning")
                     try:
                         prop_name = prop_options[prop_selector.value]
-                        path = generate_lease_pdf(
+                        path = await run.io_bound(
+                            generate_lease_pdf,
                             tenant_name=t_name.value,
                             unit=str(t_unit.value),
                             rent_amount=t_rent.value or 0,
                             start_date=t_start.value,
                             end_date=t_end.value,
                             property_name=prop_name,
+                            tenant_id=tenant_picker.value,
                         )
                         last_lease_path["path"] = path
                         ui.notify("Lease generated!", type="positive")
-                        folder_selector.options = list_all_document_folders()
+                        folders = await run.io_bound(list_all_document_folders)
+                        folder_selector.options = folders
                         post_gen_row.set_visibility(True)
                     except Exception as ex:
                         ui.notify(str(ex), type="negative")
@@ -166,17 +177,21 @@ def lease_page():
                 ui.button("Generate", on_click=on_gen, icon="add").classes("w-full mt-2").props("unelevated rounded")
 
                 with post_gen_row:
-                    def mark_signed():
+                    async def mark_signed():
                         tenant = next(
                             (t for t in tenants if t["name"] == t_name.value and t["unit"] == str(t_unit.value)),
                             None,
                         )
-                        if tenant and update_tenant(tenant["id"], lease_signed="Yes"):
-                            ui.notify("Lease marked as signed", type="positive")
+                        if tenant:
+                            ok = await run.io_bound(update_tenant, tenant["id"], lease_signed="Yes")
+                            if ok:
+                                ui.notify("Lease marked as signed", type="positive")
+                            else:
+                                ui.notify("Could not update tenant", type="negative")
                         else:
                             ui.notify("Could not update tenant", type="negative")
 
-                    def send_lease():
+                    async def send_lease():
                         tenant = next(
                             (t for t in tenants if t["name"] == t_name.value and t["unit"] == str(t_unit.value)),
                             None,
@@ -185,7 +200,8 @@ def lease_page():
                             return ui.notify("Tenant email is required. Edit tenant to add email.", type="warning")
                         if not last_lease_path["path"]:
                             return ui.notify("Generate a lease first", type="warning")
-                        success, msg = send_lease_email(
+                        success, msg = await run.io_bound(
+                            send_lease_email,
                             tenant["name"], tenant["email"], last_lease_path["path"], user_id=user_id
                         )
                         ui.notify(msg, type="positive" if success else "negative")

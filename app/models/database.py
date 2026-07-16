@@ -1,5 +1,6 @@
 """Supabase database client and encryption helpers."""
 
+import binascii
 from cryptography.fernet import Fernet, InvalidToken
 from supabase import create_client, Client
 from app.config import SUPABASE_URL, SUPABASE_KEY, ENCRYPTION_KEY
@@ -32,10 +33,12 @@ def _get_fernet():
 
 
 def encrypt_value(plaintext: str) -> str:
-    """Encrypt a string value. Returns the plaintext unchanged if no key is set."""
+    """Encrypt a string value. Raises RuntimeError if no key is set and plaintext is non-empty."""
     f = _get_fernet()
     if f and plaintext:
         return f.encrypt(plaintext.encode()).decode()
+    if plaintext and not f:
+        raise RuntimeError("ENCRYPTION_KEY is not set — cannot store sensitive data.")
     return plaintext
 
 
@@ -45,6 +48,6 @@ def decrypt_value(ciphertext: str) -> str:
     if f and ciphertext:
         try:
             return f.decrypt(ciphertext.encode()).decode()
-        except (InvalidToken, Exception):
+        except (InvalidToken, binascii.Error):
             return ciphertext  # Return as-is if decryption fails (e.g., not encrypted)
     return ciphertext

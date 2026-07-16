@@ -112,7 +112,7 @@ def attempt_login(username: str, password: str) -> tuple[bool, str]:
         if bcrypt.checkpw(password.encode(), stored_hash):
             login(user["id"], user["username"], user["role"])
             return True, "Login successful."
-    except (ValueError, Exception):
+    except ValueError:
         # Invalid hash in database — cannot verify
         return False, "Account error. Please contact your admin to reset your password."
 
@@ -197,8 +197,18 @@ def reset_user_password(user_id: str, new_password: str) -> tuple[bool, str]:
     """Reset a user's password (admin-only operation)."""
     if not new_password:
         return False, "New password is required."
+    
+    caller_id = app.storage.user.get("user_id")
+    if not caller_id:
+        return False, "Unauthorized."
+    
     client = get_client()
     try:
+        # Re-check the caller's role directly from the DB
+        caller_resp = client.table("users").select("role").eq("id", caller_id).execute()
+        if not caller_resp.data or caller_resp.data[0]["role"] not in ("admin", "superadmin"):
+            return False, "Unauthorized to perform password reset."
+
         hashed = hash_password(new_password)
         client.table("users").update({"password": hashed}).eq("id", user_id).execute()
         return True, "Password reset successfully."
@@ -208,39 +218,21 @@ def reset_user_password(user_id: str, new_password: str) -> tuple[bool, str]:
 
 def delete_user(user_id: str) -> tuple[bool, str]:
     """Delete a user by ID."""
+    caller_id = app.storage.user.get("user_id")
+    if not caller_id:
+        return False, "Unauthorized."
+
     client = get_client()
     try:
+        # Re-check the caller's role directly from the DB
+        caller_resp = client.table("users").select("role").eq("id", caller_id).execute()
+        if not caller_resp.data or caller_resp.data[0]["role"] not in ("admin", "superadmin"):
+            return False, "Unauthorized to delete users."
+
         client.table("users").delete().eq("id", user_id).execute()
         return True, "User deleted successfully."
     except Exception as e:
         return False, f"Failed to delete user: {str(e)}"
 
 
-def ensure_admin_exists():
-    """Create or fix the default admin user in the database."""
-    client = get_client()
 
-    # Check if admin user exists
-    response = client.table("users").select("id, password").eq("username", "admin").execute()
-
-    if response.data:
-        # Admin exists — verify the hash is valid bcrypt
-        stored = response.data[0]["password"]
-        try:
-            bcrypt.checkpw(b"test", stored.encode())
-        except (ValueError, Exception):
-            # Bad hash — reset it
-            hashed = hash_password("admin123")
-            client.table("users").update({"password": hashed}).eq("username", "admin").execute()
-            print("[INFO] Admin password was invalid and has been reset to 'admin123'")
-    else:
-        # No admin — check if any users exist at all
-        any_users = client.table("users").select("id").limit(1).execute()
-        if not any_users.data:
-            hashed = hash_password("admin123")
-            client.table("users").insert({
-                "username": "admin",
-                "password": hashed,
-                "role": "admin",
-            }).execute()
-            print("[INFO] Default admin user created (username: admin, password: admin123)")

@@ -1,4 +1,4 @@
-from nicegui import ui
+from nicegui import ui, run
 from app.auth import require_role, get_user_id, get_user_role, create_user, get_all_users, delete_user, reset_user_password
 from app.services.audit_service import get_audit_logs
 from app.services.import_submission_service import (
@@ -10,7 +10,7 @@ from app.theme import (page_layout, section_header, ACCENT, SUCCESS, DANGER, WAR
 
 @ui.page("/admin")
 @require_role("admin")
-def admin_page():
+async def admin_page():
     with page_layout(title="Admin Panel"):
         section_header("User Management", "Create and manage user accounts")
 
@@ -63,12 +63,13 @@ def admin_page():
                 create_result = ui.label("").classes("text-sm mt-2")
                 create_result.set_visibility(False)
 
-                def handle_create():
+                async def handle_create():
                     if not new_username.value or not new_password.value:
                         ui.notify("Username and password are required", type="warning")
                         return
                     admin_id = get_user_id()
-                    success, msg = create_user(
+                    success, msg = await run.io_bound(
+                        create_user,
                         new_username.value, new_password.value,
                         new_role.value, created_by=admin_id,
                     )
@@ -77,7 +78,7 @@ def admin_page():
                         ui.notify(msg, type="positive")
                         new_username.value = ""
                         new_password.value = ""
-                        refresh_users()
+                        await refresh_users()
                     else:
                         create_result.style(f"color: {DANGER}")
                         ui.notify(msg, type="negative")
@@ -103,9 +104,9 @@ def admin_page():
 
                 users_container = ui.column().classes("w-full gap-3")
 
-                def refresh_users():
+                async def refresh_users():
                     users_container.clear()
-                    users = get_all_users()
+                    users = await run.io_bound(get_all_users)
                     current_user_id = get_user_id()
                     with users_container:
                         if not users:
@@ -162,8 +163,8 @@ def admin_page():
                         with ui.row().classes("gap-2 justify-end w-full"):
                             ui.button("Cancel", on_click=dialog.close).props("flat")
 
-                            def do_reset():
-                                success, msg = reset_user_password(uid, new_pw.value)
+                            async def do_reset():
+                                success, msg = await run.io_bound(reset_user_password, uid, new_pw.value)
                                 ui.notify(msg, type="positive" if success else "negative")
                                 dialog.close()
 
@@ -180,26 +181,27 @@ def admin_page():
                         ).style(f"color: {TEXT_SECONDARY}")
                         with ui.row().classes("gap-2 justify-end w-full"):
                             ui.button("Cancel", on_click=dialog.close).props("flat")
-                            def do_delete():
-                                success, msg = delete_user(uid)
+                            async def do_delete():
+                                success, msg = await run.io_bound(delete_user, uid)
                                 ui.notify(msg, type="positive" if success else "negative")
                                 dialog.close()
-                                refresh_users()
+                                await refresh_users()
                             ui.button("Delete", on_click=do_delete, icon="delete").props(
                                 "unelevated color=negative"
                             )
                     dialog.open()
 
-                refresh_users()
+                await refresh_users()
 
         # ── Pending Imports (superadmin only) ─────────────────────────────────
         if get_user_role() == "superadmin":
-            _render_pending_imports(get_user_id())
+            pending = await run.io_bound(get_pending_submissions)
+            _render_pending_imports(get_user_id(), pending)
 
         section_header("Audit Trail", "Recent system actions logged for compliance")
 
         admin_user_id = get_user_id()
-        logs = get_audit_logs(admin_user_id, limit=100)
+        logs = await run.io_bound(get_audit_logs, admin_user_id, limit=100)
         if logs:
             log_rows = [
                 {
@@ -247,9 +249,8 @@ _REVIEW_COLS = [
 ]
 
 
-def _render_pending_imports(reviewer_id: str):
+def _render_pending_imports(reviewer_id: str, pending: list):
     """Render the Pending Imports review section for the superadmin."""
-    pending = get_pending_submissions()
 
     badge = f" ({len(pending)})" if pending else ""
     section_header(f"Pending Imports{badge}", "Review, edit, and approve client data submissions")
@@ -415,8 +416,8 @@ def _render_pending_imports(reviewer_id: str):
                         ).classes("w-full mb-4").props("outlined autogrow")
                         with ui.row().classes("gap-2 justify-end w-full"):
                             ui.button("Cancel", on_click=dlg.close).props("flat")
-                            def confirm_reject(sid=sid, ni=note_input, dlg=dlg):
-                                ok, msg = reject_submission(sid, reviewer_id, ni.value)
+                            async def confirm_reject(sid=sid, ni=note_input, dlg=dlg):
+                                ok, msg = await run.io_bound(reject_submission, sid, reviewer_id, ni.value)
                                 ui.notify(msg, type="positive" if ok else "negative")
                                 dlg.close()
                                 ui.navigate.to("/admin")
@@ -434,8 +435,8 @@ def _render_pending_imports(reviewer_id: str):
                         ).classes("text-sm mb-4").style(f"color: {TEXT_SECONDARY}")
                         with ui.row().classes("gap-2 justify-end w-full"):
                             ui.button("Cancel", on_click=dlg.close).props("flat")
-                            def confirm_approve(sid=sid, rows=rows, dlg=dlg):
-                                ok, msg = approve_submission(sid, reviewer_id, rows_override=rows)
+                            async def confirm_approve(sid=sid, rows=rows, dlg=dlg):
+                                ok, msg = await run.io_bound(approve_submission, sid, reviewer_id, rows_override=rows)
                                 ui.notify(msg, type="positive" if ok else "negative")
                                 dlg.close()
                                 ui.navigate.to("/admin")

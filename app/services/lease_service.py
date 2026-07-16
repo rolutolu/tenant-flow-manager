@@ -8,7 +8,8 @@ from app.models.database import get_client
 
 
 def generate_lease_pdf(tenant_name: str, unit: str, rent_amount: float,
-                       start_date: str, end_date: str, property_name: str = "") -> str:
+                       start_date: str, end_date: str, property_name: str = "",
+                       tenant_id: int = None) -> str:
     """Generate a PDF lease agreement and return the cloud path."""
     pdf = FPDF()
     pdf.add_page()
@@ -60,13 +61,13 @@ def generate_lease_pdf(tenant_name: str, unit: str, rent_amount: float,
     pdf_output = pdf.output(dest='S')
     content = pdf_output if isinstance(pdf_output, bytes) else pdf_output.encode('latin-1')
 
-    # Get tenant ID from database to associate the file
-    client = get_client()
-    tenant_resp = client.table("tenants").select("id").eq("name", tenant_name).eq("unit", unit).execute()
-    if not tenant_resp.data:
-        raise Exception(f"Tenant '{tenant_name}' at Unit '{unit}' not found.")
-    
-    tenant_id = tenant_resp.data[0]['id']
+    # Get tenant ID — use provided ID or fall back to name+unit lookup
+    if not tenant_id:
+        client = get_client()
+        tenant_resp = client.table("tenants").select("id").eq("name", tenant_name).eq("unit", unit).execute()
+        if not tenant_resp.data:
+            raise Exception(f"Tenant '{tenant_name}' at Unit '{unit}' not found.")
+        tenant_id = tenant_resp.data[0]['id']
 
     # Upload to Supabase Storage
     cloud_path = save_uploaded_file(
@@ -83,7 +84,7 @@ def generate_lease_pdf(tenant_name: str, unit: str, rent_amount: float,
 
 def generate_rent_increase_notice(tenant_name: str, unit: str,
                                   current_rent: float, new_rent: float,
-                                  effective_date: str) -> str:
+                                  effective_date: str, tenant_id: int = None) -> str:
     """Generate a rent increase notice PDF and return the cloud path."""
     pdf = FPDF()
     pdf.add_page()
@@ -120,13 +121,13 @@ def generate_rent_increase_notice(tenant_name: str, unit: str,
     pdf_output = pdf.output(dest='S')
     content = pdf_output if isinstance(pdf_output, bytes) else pdf_output.encode('latin-1')
 
-    # Get tenant ID from database
-    client = get_client()
-    tenant_resp = client.table("tenants").select("id").eq("name", tenant_name).eq("unit", unit).execute()
-    if not tenant_resp.data:
-        raise Exception(f"Tenant '{tenant_name}' at Unit '{unit}' not found.")
-    
-    tenant_id = tenant_resp.data[0]['id']
+    # Get tenant ID — use provided ID or fall back to name+unit lookup
+    if not tenant_id:
+        client = get_client()
+        tenant_resp = client.table("tenants").select("id").eq("name", tenant_name).eq("unit", unit).execute()
+        if not tenant_resp.data:
+            raise Exception(f"Tenant '{tenant_name}' at Unit '{unit}' not found.")
+        tenant_id = tenant_resp.data[0]['id']
 
     # Upload to Supabase Storage
     cloud_path = save_uploaded_file(

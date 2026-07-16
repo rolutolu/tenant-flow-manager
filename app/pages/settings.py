@@ -1,6 +1,6 @@
 """Account settings — per-landlord email sender and footer."""
 
-from nicegui import ui
+from nicegui import ui, run
 from app.auth import require_role, get_user_id
 from app.theme import page_layout, section_header, ACCENT, SUCCESS, WARNING, TEXT_SECONDARY, CARD_BG, BORDER
 from app.services.email_config_service import (
@@ -13,9 +13,9 @@ from app.services.ses_service import is_ses_configured, request_ses_verification
 
 @ui.page("/settings")
 @require_role("admin", "manager")
-def settings_page():
+async def settings_page():
     user_id = get_user_id()
-    config = get_email_config(user_id)
+    config = await run.io_bound(get_email_config, user_id)
 
     with page_layout(title="Settings"):
         section_header("Email Settings", "Send notices from your own address with a custom footer")
@@ -72,17 +72,18 @@ def settings_page():
 
             status_label = ui.label("").classes("text-sm mb-3")
 
-            def refresh_status():
-                ok, msg = update_verification_status(user_id)
+            async def refresh_status():
+                ok, msg = await run.io_bound(update_verification_status, user_id)
                 color = SUCCESS if ok else WARNING
                 status_label.text = msg
                 status_label.style(f"color: {color}")
 
             if config.get("from_email"):
-                refresh_status()
+                await refresh_status()
 
             async def handle_save():
-                success, msg = save_email_config(
+                success, msg = await run.io_bound(
+                    save_email_config,
                     user_id,
                     from_email.value,
                     from_name.value,
@@ -93,9 +94,9 @@ def settings_page():
                     ui.notify(msg, type="negative")
                     return
                 ui.notify(msg, type="positive")
-                ok, vmsg = request_ses_verification(from_email.value)
+                ok, vmsg = await run.io_bound(request_ses_verification, from_email.value)
                 ui.notify(vmsg, type="positive" if ok else "warning")
-                refresh_status()
+                await refresh_status()
 
             with ui.row().classes("gap-2 flex-wrap"):
                 ui.button("Save & Verify Email", on_click=handle_save, icon="save").props("unelevated color=primary")

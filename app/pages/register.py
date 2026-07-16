@@ -7,7 +7,7 @@ The invite code is set via the INVITE_CODE environment variable.
 If INVITE_CODE is empty/unset, the registration page is disabled entirely.
 """
 
-from nicegui import ui, app as nicegui_app
+from nicegui import ui, run, app as nicegui_app
 from app.auth import create_user
 from app.config import INVITE_CODE
 from app.theme import GLOBAL_CSS, PRIMARY, ACCENT, SUCCESS, DANGER, TEXT_SECONDARY
@@ -57,8 +57,7 @@ def register_page():
             )
         return
 
-    # ── Read ?code= query param ───────────────────────────────────────────────
-    submitted_code = nicegui_app.storage.client.get("register_code", "")
+
 
     # Pull the code from query params on first load via JS
     ui.add_head_html("""
@@ -109,32 +108,32 @@ def register_page():
             invite_input = ui.input(
                 label="Invite Code",
                 placeholder="Enter the code provided to you",
-            ).classes("w-full").props("outlined")
+            ).classes("w-full").props("outlined stack-label")
 
             username_input = ui.input(
                 label="Username",
                 placeholder="Choose a username",
-            ).classes("w-full mt-2").props("outlined")
+            ).classes("w-full mt-2").props("outlined stack-label")
 
             password_input = ui.input(
                 label="Password",
                 password=True,
                 password_toggle_button=True,
                 placeholder="Choose a strong password",
-            ).classes("w-full mt-2").props("outlined")
+            ).classes("w-full mt-2").props("outlined stack-label")
 
             confirm_input = ui.input(
                 label="Confirm Password",
                 password=True,
                 password_toggle_button=True,
                 placeholder="Repeat your password",
-            ).classes("w-full mt-2").props("outlined")
+            ).classes("w-full mt-2").props("outlined stack-label")
 
             result_label = ui.label("").classes("text-sm mt-2 text-center w-full")
             result_label.set_visibility(False)
 
             # ── Submit handler ────────────────────────────────────────────────
-            def handle_register():
+            async def handle_register():
                 result_label.set_visibility(False)
 
                 ip = get_client_ip()
@@ -178,7 +177,8 @@ def register_page():
                     ui.notify("Passwords do not match.", type="warning")
                     return
 
-                success, msg = create_user(
+                success, msg = await run.io_bound(
+                    create_user,
                     username=username_input.value.strip(),
                     password=password_input.value,
                     role="admin",

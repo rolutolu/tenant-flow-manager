@@ -78,16 +78,18 @@ def _meta_get(endpoint: str, config: dict, params: dict | None = None) -> dict:
 
 # ── Campaigns ──────────────────────────────────────────────────────────────────
 
-def get_campaigns() -> tuple[bool, list[dict], str]:
+def get_campaigns(user_id: str) -> tuple[bool, list[dict], str]:
     """Fetch all campaigns from the ad account.
 
     Returns (success, campaigns_list, error_message).
     """
-    if not is_meta_configured():
+    config = get_marketing_config(user_id)
+    if not config["access_token"]:
         return False, [], "Meta API credentials not configured."
 
     data = _meta_get(
-        f"{META_AD_ACCOUNT_ID}/campaigns",
+        f"{config['ad_account_id']}/campaigns",
+        config=config,
         params={
             "fields": "id,name,status,objective,daily_budget,lifetime_budget,"
                       "start_time,stop_time,buying_type,created_time",
@@ -103,14 +105,16 @@ def get_campaigns() -> tuple[bool, list[dict], str]:
 
 # ── Ad Sets ────────────────────────────────────────────────────────────────────
 
-def get_ad_sets(campaign_id: str = None) -> tuple[bool, list[dict], str]:
+def get_ad_sets(user_id: str, campaign_id: str = None) -> tuple[bool, list[dict], str]:
     """Fetch ad sets, optionally filtered by campaign_id."""
-    if not is_meta_configured():
+    config = get_marketing_config(user_id)
+    if not config["access_token"]:
         return False, [], "Meta API credentials not configured."
 
-    endpoint = f"{campaign_id}/adsets" if campaign_id else f"{META_AD_ACCOUNT_ID}/adsets"
+    endpoint = f"{campaign_id}/adsets" if campaign_id else f"{config['ad_account_id']}/adsets"
     data = _meta_get(
         endpoint,
+        config=config,
         params={
             "fields": "id,name,status,daily_budget,targeting,optimization_goal,"
                       "billing_event,start_time,end_time",
@@ -172,13 +176,15 @@ def get_account_insights(user_id: str, date_preset: str = "last_30d") -> tuple[b
     return True, insights[0] if insights else {}, ""
 
 
-def get_campaign_insights(date_preset: str = "last_30d") -> tuple[bool, list[dict], str]:
+def get_campaign_insights(user_id: str, date_preset: str = "last_30d") -> tuple[bool, list[dict], str]:
     """Fetch per-campaign insights for the account."""
-    if not is_meta_configured():
+    config = get_marketing_config(user_id)
+    if not config["access_token"]:
         return False, [], "Meta API credentials not configured."
 
     data = _meta_get(
-        f"{META_AD_ACCOUNT_ID}/insights",
+        f"{config['ad_account_id']}/insights",
+        config=config,
         params={
             "fields": "campaign_id,campaign_name,impressions,clicks,ctr,"
                       "spend,reach,actions",

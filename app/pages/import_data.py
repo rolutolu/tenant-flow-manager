@@ -9,7 +9,7 @@ Path B (Raw file): anything else (.db, .sqlite, .sql, .pdf, .png, images, .zip, 
 """
 
 import math
-from nicegui import ui
+from nicegui import ui, run
 from app.auth import require_role, get_user_id
 from app.theme import (
     page_layout, section_header,
@@ -50,7 +50,7 @@ PREVIEW_COLUMNS = [
 
 @ui.page("/import")
 @require_role("admin", "manager")
-def import_page():
+async def import_page():
     user_id = get_user_id()
 
     # ── Spreadsheet state ──────────────────────────────────────────────────────
@@ -72,8 +72,8 @@ def import_page():
         )
 
         with ui.tabs().classes("w-full mb-6") as tabs:
-            tab_sheet = ui.tab("sheet", label="📊  Spreadsheet")
-            tab_raw   = ui.tab("raw",   label="📁  Documents & Files")
+            ui.tab("sheet", label="📊  Spreadsheet")
+            ui.tab("raw",   label="📁  Documents & Files")
 
         with ui.tab_panels(tabs, value="sheet").classes("w-full"):
 
@@ -232,12 +232,13 @@ def import_page():
                         render_preview()
                         ui.notify(f"{len(rows)} rows ready for review.", type="positive")
 
-                    def handle_submit():
+                    async def handle_submit():
                         if not ss["mapped_rows"]:
                             ui.notify("Build the preview first.", type="warning")
                             return
                         ui.notify("Submitting…", type="info")
-                        sub_id = submit_spreadsheet(
+                        sub_id = await run.io_bound(
+                            submit_spreadsheet,
                             user_id,
                             ss["filename"],
                             ss["file_bytes"],
@@ -295,7 +296,7 @@ def import_page():
                                 
                                 async def handle_fallback_submit():
                                     ui.notify("Submitting for manual import...", type="info")
-                                    sub_id = submit_raw_file(user_id, filename, file_bytes)
+                                    sub_id = await run.io_bound(submit_raw_file, user_id, filename, file_bytes)
                                     if sub_id:
                                         confirm_area.clear()
                                         with confirm_area:
@@ -348,7 +349,7 @@ def import_page():
                                 ui.notify("File is empty — please check the file and try again.", type="negative")
                                 return
 
-                            df, parse_err = parse_file(content, name)
+                            df, parse_err = await run.io_bound(parse_file, content, name)
                             if df is None or df.empty:
                                 _show_fallback(name, content, parse_err)
                                 return
@@ -439,7 +440,7 @@ def import_page():
                             record_attempt(user_key)
                             name = getattr(e.file, "name", None) or getattr(e.file, "filename", None) or "upload"
                             content = await e.file.read()
-                            sub_id = submit_raw_file(user_id, name, content)
+                            sub_id = await run.io_bound(submit_raw_file, user_id, name, content)
                             raw_status.clear()
                             with raw_status:
                                 if sub_id:
@@ -470,14 +471,9 @@ def import_page():
                     )
 
         # ── Submission history ─────────────────────────────────────────────────
-        history = get_user_submissions(user_id)
+        history = await run.io_bound(get_user_submissions, user_id)
         if history:
             section_header("Your Submission History", "Past imports and their review status")
-            status_colors = {
-                "pending":  WARNING,
-                "approved": SUCCESS,
-                "rejected": DANGER,
-            }
             rows = [
                 {
                     "filename":     s["filename"],
