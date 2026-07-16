@@ -2,7 +2,7 @@
 
 import os
 from datetime import datetime
-from nicegui import ui, app as nicegui_app
+from nicegui import ui, run, app as nicegui_app
 from app.auth import require_auth, get_user_id, get_user_role, get_current_user
 from app.theme import (page_layout, metric_card, section_header,
                         ACCENT, SUCCESS, WARNING, DANGER, CARD_BG, BORDER, TEXT_PRIMARY, TEXT_SECONDARY)
@@ -14,7 +14,7 @@ from app.services.finance_service import get_revenue_summary
 
 @ui.page("/")
 @require_auth
-def dashboard_page():
+async def dashboard_page():
     user_id = get_user_id()
     role = get_user_role()
 
@@ -32,12 +32,17 @@ def dashboard_page():
     username = user_data.get("username") or "User"
     display_name = username.capitalize()
 
+    # Fetch metrics asynchronously to avoid blocking the event loop
+    all_units = await run.io_bound(get_all_units, user_id)
+    tenants = await run.io_bound(get_all_tenants, user_id)
+    tickets = await run.io_bound(get_maintenance_requests, user_id)
+
     with page_layout(title="Dashboard"):
         # Section header renders the Playfair Display serif text and separator line globally
         section_header(f"{greeting}, {display_name}.")
 
         # ── Setup Banners ───────────────────────────────────────────────────
-        _render_setup_banners(user_id, role)
+        _render_setup_banners(user_id, role, tenants)
 
         # ── Roadmap / Upcoming Features Notice ─────────────────────────────
         with ui.card().classes("w-full p-4 mb-4").style(
@@ -48,20 +53,18 @@ def dashboard_page():
                 with ui.column().classes("gap-0"):
                     ui.label("Coming Soon: Automated Email Sending & Bank Email Scanning").classes("font-semibold text-xs").style(
                         "color: var(--text-primary);"
-                    )
+                     )
                     ui.label(
                         "Full automated email broadcasting and direct integration to scan incoming bank deposit alert emails "
                         "are soon-to-be-implemented features currently in active development."
                     ).classes("text-[11px]").style("color: var(--text-secondary);")
 
         # ── Metrics Row (Mockup Style: Units, Occupancy, MRR, Tickets) ──
-        all_units = get_all_units(user_id)
         total_units = len(all_units)
         
         occupied_units = sum(1 for u in all_units if u["status"] == "Occupied")
         occupancy_pct = int((occupied_units / total_units) * 100) if total_units > 0 else 0
         
-        tenants = get_all_tenants(user_id)
         mrr_val = sum(t.get("rent_amount") or 0 for t in tenants)
         
         # Format MRR nicely (e.g. $2.1M or $15.2k or $15,200)
@@ -72,7 +75,6 @@ def dashboard_page():
         else:
             mrr_str = f"${mrr_val:,.0f}"
 
-        tickets = get_maintenance_requests(user_id)
         open_tickets = sum(1 for t in tickets if t["status"] != "Resolved")
 
         with ui.row().classes("w-full flex-wrap gap-6 mb-6"):
@@ -98,7 +100,7 @@ def dashboard_page():
 
         # ── Revenue Breakdown (admin only) ─────────────────────────────────
         if role == "admin":
-            revenue = get_revenue_summary(user_id)
+            revenue = await run.io_bound(get_revenue_summary, user_id)
             if revenue["total"] > 0:
                 section_header("Revenue Breakdown", "PADs vs E-Transfers")
                 with ui.card().classes("w-full p-5 rounded-2xl shadow-sm").style(
@@ -146,7 +148,7 @@ _IMPORT_DISMISSED_KEY = "banner_import_dismissed"
 _META_DISMISSED_KEY = "banner_meta_dismissed"
 
 
-def _render_setup_banners(user_id: str, role: str):
+def _render_setup_banners(user_id: str, role: str, tenants: list):
     """Show dismissible setup nudge banners when data or integrations are missing.
 
     Banners are hidden if:
@@ -161,7 +163,6 @@ def _render_setup_banners(user_id: str, role: str):
     if nicegui_app.storage.user.get(_BANNER_MUTE_KEY, False):
         return
 
-    tenants = get_all_tenants(user_id)
     has_tenants = len(tenants) > 0
     has_meta = bool(os.environ.get("META_ACCESS_TOKEN", "").strip())
 

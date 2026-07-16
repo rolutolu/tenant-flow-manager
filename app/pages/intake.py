@@ -1,6 +1,6 @@
 """Intake & Screening page — tenant onboarding with document upload and reference checks."""
 
-from nicegui import ui, events
+from nicegui import ui, run, events
 from app.auth import require_role, get_user_id
 from app.theme import page_layout, section_header, SUCCESS, TEXT_SECONDARY
 from app.services.tenant_service import add_tenant
@@ -12,7 +12,7 @@ from app.services.reference_service import log_reference_check, update_reference
 
 @ui.page("/intake")
 @require_role("admin", "manager")
-def intake_page():
+async def intake_page():
     user_id = get_user_id()
     state = {"tenant_id": None, "pending_refs": []}
 
@@ -27,7 +27,7 @@ def intake_page():
                     f"color: {TEXT_SECONDARY}"
                 )
 
-                properties = get_properties(user_id)
+                properties = await run.io_bound(get_properties, user_id)
                 prop_options = {p["id"]: p["name"] for p in properties}
                 unit_options = {}
 
@@ -35,9 +35,9 @@ def intake_page():
                     name_input = ui.input(label="Full Name").classes("flex-1 min-w-[250px]").props("outlined")
                     email_input = ui.input(label="Email").classes("flex-1 min-w-[250px]").props("outlined")
 
-                    def on_prop_change(e):
+                    async def on_prop_change(e):
                         if e.value:
-                            units = get_units_by_property(e.value)
+                            units = await run.io_bound(get_units_by_property, e.value)
                             vacant_units = {
                                 u["id"]: f"Unit {u['unit_number']} (${u['default_rent']})"
                                 for u in units if u["status"] in ["Vacant", "Notice"]
@@ -47,7 +47,7 @@ def intake_page():
                         else:
                             unit_select.options = {}
 
-                    prop_select = ui.select(
+                    ui.select(
                         label="Property", options=prop_options, on_change=on_prop_change
                     ).classes("flex-1 min-w-[250px]").props("outlined")
 
@@ -59,12 +59,15 @@ def intake_page():
                         "flex-1 min-w-[250px]"
                     ).props("outlined")
 
-                    def on_unit_change(e):
+                    async def on_unit_change(e):
                         if e.value:
-                            selected_unit = next(
-                                (u for p in properties for u in get_units_by_property(p["id"]) if u["id"] == e.value),
-                                None,
-                            )
+                            selected_unit = None
+                            for p in properties:
+                                units = await run.io_bound(get_units_by_property, p["id"])
+                                match = next((u for u in units if u["id"] == e.value), None)
+                                if match:
+                                    selected_unit = match
+                                    break
                             if selected_unit:
                                 rent_input.value = selected_unit["default_rent"]
 
@@ -147,11 +150,11 @@ def intake_page():
                 ref_result.set_visibility(False)
                 ref_table_container = ui.column().classes("w-full mt-4 gap-2")
 
-                def refresh_ref_table():
+                async def refresh_ref_table():
                     ref_table_container.clear()
                     checks = []
                     if state["tenant_id"]:
-                        checks = get_checks_for_tenant(state["tenant_id"])
+                        checks = await run.io_bound(get_checks_for_tenant, state["tenant_id"])
                     elif state["pending_refs"]:
                         checks = state["pending_refs"]
 
@@ -168,9 +171,9 @@ def intake_page():
                                 if check.get("id") and state["tenant_id"]:
                                     cid = check["id"]
 
-                                    def mark_status(s, check_id=cid):
-                                        if update_reference_status(check_id, s):
-                                            refresh_ref_table()
+                                    async def mark_status(s, check_id=cid):
+                                        if await run.io_bound(update_reference_status, check_id, s):
+                                            await refresh_ref_table()
                                             ui.notify(f"Marked as {s}", type="positive")
 
                                     with ui.row().classes("gap-1"):
@@ -181,7 +184,7 @@ def intake_page():
                                             "flat dense color=negative size=sm"
                                         ).tooltip("Mark Declined")
 
-                def record_ref(channel: str):
+                async def record_ref(channel: str):
                     entry = {
                         "ref_name": ref_name.value or "Reference",
                         "ref_phone": ref_phone.value or "",
@@ -191,7 +194,8 @@ def intake_page():
                         "status": "Sent",
                     }
                     if state["tenant_id"]:
-                        check_id = log_reference_check(
+                        check_id = await run.io_bound(
+                            log_reference_check,
                             user_id=user_id,
                             tenant_id=state["tenant_id"],
                             ref_name=entry["ref_name"],
@@ -204,35 +208,37 @@ def intake_page():
                             entry["id"] = check_id
                     else:
                         state["pending_refs"].append(entry)
-                    refresh_ref_table()
+                    await refresh_ref_table()
 
-                def send_ref_sms():
+                async def send_ref_sms():
                     if not ref_phone.value:
                         ui.notify("Please provide a phone number for SMS", type="warning")
                         return
-                    success, msg = send_reference_check(
+                    success, msg = await run.io_bound(
+                        send_reference_check,
                         tenant_name=name_input.value or "Prospective Tenant",
                         ref_phone=ref_phone.value,
                         ref_name=ref_name.value or "Reference",
                     )
                     if success:
-                        record_ref("SMS")
+                        await record_ref("SMS")
                     ref_result.text = msg
                     ref_result.set_visibility(True)
                     ui.notify(msg, type="positive" if success else "negative")
 
-                def send_ref_email_action():
+                async def send_ref_email_action():
                     if not ref_email.value:
                         ui.notify("Please provide an email address", type="warning")
                         return
-                    success, msg = send_reference_email(
+                    success, msg = await run.io_bound(
+                        send_reference_email,
                         tenant_name=name_input.value or "Prospective Tenant",
                         ref_email=ref_email.value,
                         ref_name=ref_name.value or "Reference",
                         user_id=user_id,
                     )
                     if success:
-                        record_ref("Email")
+                        await record_ref("Email")
                     ref_result.text = msg
                     ref_result.set_visibility(True)
                     ui.notify(msg, type="positive" if success else "negative")
@@ -241,7 +247,7 @@ def intake_page():
                     ui.button("Send SMS", on_click=send_ref_sms, icon="sms").props("unelevated rounded")
                     ui.button("Send Email", on_click=send_ref_email_action, icon="email").props("outline rounded")
 
-                refresh_ref_table()
+                await refresh_ref_table()
 
                 with ui.stepper_navigation():
                     ui.button("Back", on_click=stepper.previous, icon="arrow_back").props("flat")
@@ -255,7 +261,7 @@ def intake_page():
 
                 result_area = ui.column().classes("w-full gap-2")
 
-                def save_tenant():
+                async def save_tenant():
                     if not name_input.value or not unit_select.value:
                         ui.notify("Name and Unit are required", type="warning")
                         return
@@ -266,7 +272,8 @@ def intake_page():
                     )
 
                     try:
-                        tenant_id = add_tenant(
+                        tenant_id = await run.io_bound(
+                            add_tenant,
                             user_id=user_id,
                             name=name_input.value,
                             unit=unit_text,
@@ -285,7 +292,8 @@ def intake_page():
 
                     state["tenant_id"] = tenant_id
                     for ref in state["pending_refs"]:
-                        log_reference_check(
+                        await run.io_bound(
+                            log_reference_check,
                             user_id=user_id,
                             tenant_id=tenant_id,
                             ref_name=ref.get("ref_name", ""),
@@ -295,7 +303,7 @@ def intake_page():
                             channel=ref.get("channel", "SMS"),
                         )
                     state["pending_refs"].clear()
-                    refresh_ref_table()
+                    await refresh_ref_table()
 
                     saved_count = 0
                     if not uploaded_files:
@@ -303,7 +311,8 @@ def intake_page():
 
                     for doc_type, file_data in uploaded_files.items():
                         try:
-                            save_uploaded_file(
+                            await run.io_bound(
+                                save_uploaded_file,
                                 tenant_id=tenant_id,
                                 tenant_name=name_input.value,
                                 unit=unit_text,

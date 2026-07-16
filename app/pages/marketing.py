@@ -1,6 +1,6 @@
 """Marketing Dashboard — Meta Marketing API integration (Facebook & Instagram)."""
 
-from nicegui import ui
+from nicegui import ui, run
 from app.auth import require_auth, get_user_id
 from app.theme import page_layout, section_header, ACCENT, TEXT_SECONDARY, WARNING, CARD_BG, BORDER, SUCCESS
 from app.services.marketing_service import is_meta_configured, get_ads, get_account_insights, save_marketing_config
@@ -8,11 +8,11 @@ from app.services.marketing_service import is_meta_configured, get_ads, get_acco
 
 @ui.page("/marketing")
 @require_auth
-def marketing_page():
+async def marketing_page():
     user_id = get_user_id()
     db_error = None
     try:
-        configured = is_meta_configured(user_id)
+        configured = await run.io_bound(is_meta_configured, user_id)
     except Exception as e:
         configured = False
         db_error = str(e)
@@ -44,7 +44,8 @@ def marketing_page():
                         if not token_input.value or not acc_id_input.value:
                             ui.notify("Both fields are required", type="warning")
                             return
-                        if save_marketing_config(user_id, token_input.value, acc_id_input.value):
+                        ok = await run.io_bound(save_marketing_config, user_id, token_input.value, acc_id_input.value)
+                        if ok:
                             ui.notify("Meta configuration saved successfully!", type="positive")
                             ui.navigate.to("/marketing")  # Refresh
                         else:
@@ -84,14 +85,14 @@ def marketing_page():
 
                     listings_grid = ui.row().classes("w-full gap-4 flex-wrap")
 
-                    def refresh_listings():
+                    async def refresh_listings():
                         listings_grid.clear()
                         if not configured:
                             with listings_grid:
                                 for _ in range(3): _placeholder_listing()
                             return
 
-                        success, ads, err = get_ads(user_id)
+                        success, ads, err = await run.io_bound(get_ads, user_id)
                         with listings_grid:
                             if success and ads:
                                 for ad in ads:
@@ -100,7 +101,7 @@ def marketing_page():
                                 ui.notify(f"API Error: {err}", type="negative")
                                 for _ in range(3): _placeholder_listing()
 
-                    refresh_listings()
+                    await refresh_listings()
 
                 # ── Analytics Section ──────────────────────────────────────
                 with ui.row().classes("w-full gap-6 flex-wrap"):
@@ -110,7 +111,7 @@ def marketing_page():
                             ui.icon("facebook", color="blue-8", size="32px")
                             ui.label("Facebook Performance").classes("text-lg font-semibold")
 
-                        insights = get_account_insights(user_id)[1] if configured else {}
+                        insights = (await run.io_bound(get_account_insights, user_id))[1] if configured else {}
                         _mini_stat("Reach", insights.get("reach", "0"), "groups")
                         _mini_stat("Spend", f"${insights.get('spend', '0.00')}", "payments")
 

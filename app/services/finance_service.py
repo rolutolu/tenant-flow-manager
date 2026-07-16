@@ -35,9 +35,9 @@ def add_transaction(user_id: str, type: str, category: str, amount: float, tenan
 def get_financial_summary(user_id: str) -> dict:
     """Calculate total income, outstanding charges, etc."""
     transactions = get_transactions(user_id, limit=1000)
-    income = sum(t["amount"] for t in transactions if t["type"] == "Payment" and t["status"] == "Cleared")
+    income = sum(t["amount"] for t in transactions if t["type"] == "Payment" and t.get("status") == "Cleared")
     # Bug fix #4: Only count Pending charges as outstanding, not all charges
-    outstanding = sum(t["amount"] for t in transactions if t["type"] == "Charge" and t["status"] == "Pending")
+    outstanding = sum(t["amount"] for t in transactions if t["type"] == "Charge" and t.get("status") == "Pending")
     return {"total_income": income, "outstanding_charges": outstanding}
 
 

@@ -1,6 +1,6 @@
 """Action Center & Compliance page — lease expiration scanner and rent increase notices."""
 
-from nicegui import ui
+from nicegui import ui, run
 from app.auth import require_auth, get_user_id, get_user_role
 from app.theme import (
     page_layout, section_header, metric_card,
@@ -14,10 +14,14 @@ from app.components.tenant_edit_dialog import open_tenant_edit_dialog
 
 @ui.page("/actions")
 @require_auth
-def actions_page():
+async def actions_page():
     user_id = get_user_id()
     role = get_user_role()
     notice_paths = {}
+
+    tenant_count = await run.io_bound(get_tenant_count, user_id)
+    pending_signatures = await run.io_bound(get_pending_signatures_count, user_id)
+    tenants = await run.io_bound(get_all_tenants, user_id)
 
     with page_layout(title="Action Center"):
         section_header(
@@ -43,9 +47,9 @@ def actions_page():
 
                 results_container = ui.column().classes("w-full gap-3")
 
-                def scan_expirations():
+                async def scan_expirations():
                     results_container.clear()
-                    expiring = get_expiring_leases(user_id, days=90)
+                    expiring = await run.io_bound(get_expiring_leases, user_id, days=90)
                     with results_container:
                         if expiring:
                             ui.label(
@@ -71,21 +75,23 @@ def actions_page():
                                                     step=25,
                                                 ).classes("w-40").props("outlined dense")
 
-                                                def draft_notice(t=tenant, nr=new_rent):
+                                                async def draft_notice(t=tenant, nr=new_rent):
                                                     try:
-                                                        path = generate_rent_increase_notice(
+                                                        path = await run.io_bound(
+                                                            generate_rent_increase_notice,
                                                             tenant_name=t["name"],
                                                             unit=t["unit"],
                                                             current_rent=t["rent_amount"],
                                                             new_rent=nr.value,
                                                             effective_date=t["lease_end"],
+                                                            tenant_id=t["id"],
                                                         )
                                                         notice_paths[t["id"]] = path
                                                         ui.notify(f"Notice generated: {path}", type="positive")
                                                     except Exception as e:
                                                         ui.notify(f"Error: {str(e)}", type="negative")
 
-                                                def send_notice(t=tenant, nr=new_rent):
+                                                async def send_notice(t=tenant, nr=new_rent):
                                                     path = notice_paths.get(t["id"])
                                                     if not path:
                                                         return ui.notify("Draft the notice first", type="warning")
@@ -94,14 +100,16 @@ def actions_page():
                                                             "Tenant email required. Use Edit on tenant table.",
                                                             type="warning",
                                                         )
-                                                    success, msg = send_rent_increase_email(
+                                                    success, msg = await run.io_bound(
+                                                        send_rent_increase_email,
                                                         t["name"], t["email"], path, user_id=user_id
                                                     )
                                                     ui.notify(msg, type="positive" if success else "negative")
 
-                                                def send_and_update(t=tenant, nr=new_rent):
-                                                    send_notice(t, nr)
-                                                    if update_tenant(t["id"], rent_amount=nr.value):
+                                                async def send_and_update(t=tenant, nr=new_rent):
+                                                    await send_notice(t, nr)
+                                                    updated = await run.io_bound(update_tenant, t["id"], rent_amount=nr.value)
+                                                    if updated:
                                                         ui.notify("Rent amount updated in database", type="info")
 
                                                 ui.button(
@@ -144,10 +152,10 @@ def actions_page():
                         ui.label("System Overview").classes("text-lg font-semibold")
 
                     with ui.column().classes("gap-3 w-full"):
-                        metric_card("Total Active Tenants", get_tenant_count(user_id), "people", ACCENT)
+                        metric_card("Total Active Tenants", tenant_count, "people", ACCENT)
                         metric_card(
                             "Pending Signatures",
-                            get_pending_signatures_count(user_id),
+                            pending_signatures,
                             "edit_note",
                             WARNING,
                         )
@@ -162,7 +170,6 @@ def actions_page():
                             ui.icon("table_chart", size="24px").style(f"color: {ACCENT}")
                         ui.label("Current Database").classes("text-lg font-semibold")
 
-                    tenants = get_all_tenants(user_id)
                     if tenants:
                         display_tenants = []
                         for t in tenants:
