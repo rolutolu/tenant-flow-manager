@@ -1,7 +1,7 @@
 """Login page — username/password authentication with rate limiting protection."""
 
 from nicegui import ui, run
-from app.auth import attempt_login, is_authenticated
+from app.auth import attempt_login, login, is_authenticated
 from app.theme import PRIMARY, ACCENT, TEXT_SECONDARY, GLOBAL_CSS
 from app.services.rate_limit_service import get_client_ip, check_rate_limit, record_attempt, clear_attempts
 
@@ -127,14 +127,15 @@ def login_page():
 
                 record_attempt(ip_key)
 
-                success, msg = await run.io_bound(attempt_login, username, password)
+                success, result = await run.io_bound(attempt_login, username, password)
                 if success:
                     clear_attempts(ip_key)
                     clear_attempts(user_key)
+                    login(result["id"], result["username"], result["role"])
                     ui.navigate.to("/")
                 else:
                     record_attempt(user_key)
-                    error_label.text = msg
+                    error_label.text = result
                     error_label.set_visibility(True)
 
             password_input.on("keydown.enter", handle_login)

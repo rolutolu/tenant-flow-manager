@@ -94,8 +94,8 @@ def require_role(*roles):
 
 # ── Login / Logout ─────────────────────────────────────────────────────────────
 
-def attempt_login(username: str, password: str) -> tuple[bool, str]:
-    """Validate credentials and set the auth state."""
+def attempt_login(username: str, password: str) -> tuple[bool, str | dict]:
+    """Validate credentials and return user info or error message."""
     if not username or not password:
         return False, "Username and password are required."
 
@@ -110,8 +110,7 @@ def attempt_login(username: str, password: str) -> tuple[bool, str]:
 
     try:
         if bcrypt.checkpw(password.encode(), stored_hash):
-            login(user["id"], user["username"], user["role"])
-            return True, "Login successful."
+            return True, user
     except ValueError:
         # Invalid hash in database — cannot verify
         return False, "Account error. Please contact your admin to reset your password."
@@ -193,12 +192,11 @@ def get_all_users() -> list[dict]:
     return response.data or []
 
 
-def reset_user_password(user_id: str, new_password: str) -> tuple[bool, str]:
+def reset_user_password(caller_id: str, user_id: str, new_password: str) -> tuple[bool, str]:
     """Reset a user's password (admin-only operation)."""
     if not new_password:
         return False, "New password is required."
     
-    caller_id = app.storage.user.get("user_id")
     if not caller_id:
         return False, "Unauthorized."
     
@@ -216,9 +214,8 @@ def reset_user_password(user_id: str, new_password: str) -> tuple[bool, str]:
         return False, f"Failed to reset password: {str(e)}"
 
 
-def delete_user(user_id: str) -> tuple[bool, str]:
+def delete_user(caller_id: str, user_id: str) -> tuple[bool, str]:
     """Delete a user by ID."""
-    caller_id = app.storage.user.get("user_id")
     if not caller_id:
         return False, "Unauthorized."
 

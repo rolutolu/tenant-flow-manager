@@ -155,6 +155,7 @@ async def admin_page():
                                             ).props("flat round color=negative size=sm").tooltip("Delete")
 
                 def confirm_reset(uid: str, uname: str):
+                    admin_id = get_user_id()
                     with ui.dialog() as dialog, ui.card().classes("p-6 rounded-2xl w-96"):
                         ui.label(f"Reset password for '{uname}'").classes("text-lg font-semibold mb-2")
                         new_pw = ui.input(
@@ -164,7 +165,7 @@ async def admin_page():
                             ui.button("Cancel", on_click=dialog.close).props("flat")
 
                             async def do_reset():
-                                success, msg = await run.io_bound(reset_user_password, uid, new_pw.value)
+                                success, msg = await run.io_bound(reset_user_password, admin_id, uid, new_pw.value)
                                 ui.notify(msg, type="positive" if success else "negative")
                                 dialog.close()
 
@@ -174,6 +175,7 @@ async def admin_page():
                     dialog.open()
 
                 def confirm_delete(uid: str, uname: str):
+                    admin_id = get_user_id()
                     with ui.dialog() as dialog, ui.card().classes("p-6 rounded-2xl"):
                         ui.label(f"Delete user '{uname}'?").classes("text-lg font-semibold mb-2")
                         ui.label("This action cannot be undone. All their data will remain.").classes(
@@ -182,7 +184,7 @@ async def admin_page():
                         with ui.row().classes("gap-2 justify-end w-full"):
                             ui.button("Cancel", on_click=dialog.close).props("flat")
                             async def do_delete():
-                                success, msg = await run.io_bound(delete_user, uid)
+                                success, msg = await run.io_bound(delete_user, admin_id, uid)
                                 ui.notify(msg, type="positive" if success else "negative")
                                 dialog.close()
                                 await refresh_users()
