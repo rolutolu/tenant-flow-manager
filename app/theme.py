@@ -27,12 +27,12 @@ GLOBAL_CSS = """
     --text-primary: #1C1915;
     --text-secondary: #827B77;
     --border: #E6E4DF;
-    --header-bg: #120E0C;
+    --header-bg: #FFFFFF;
     --metric-line: #E6E4DF;
     --scrollbar-thumb: #CBD5E1;
     --scrollbar-thumb-hover: #94A3B8;
-    --action-bar-bg: #1A1714;
-    --action-bar-border: rgba(255,255,255,0.06);
+    --action-bar-bg: #FFFFFF;
+    --action-bar-border: #E6E4DF;
     --card-shadow: rgba(26,22,21,0.03);
     --card-shadow-hover: rgba(26,22,21,0.06);
     --icon-bg: linear-gradient(135deg, #120E0C18, #120E0C08);
@@ -46,8 +46,18 @@ body {
     background-color: var(--surface) !important;
 }
 
-/* Force all text to dark/black */
-body, p, span, div, label, h1, h2, h3, h4, h5, h6,
+/* Force all text to dark/black, except inside header and menu dropdowns */
+body:not(.q-header) *, 
+body:not(.q-header) p, 
+body:not(.q-header) span, 
+body:not(.q-header) div, 
+body:not(.q-header) label, 
+body:not(.q-header) h1, 
+body:not(.q-header) h2, 
+body:not(.q-header) h3, 
+body:not(.q-header) h4, 
+body:not(.q-header) h5, 
+body:not(.q-header) h6,
 .q-field__native, .q-field__prefix, .q-field__suffix, .q-field__input,
 .q-btn__content, .q-item__label, .q-tab__label,
 .q-table td, .q-table th {
@@ -73,13 +83,27 @@ div[style*="nicegui"] { display: none !important; }
 .q-header {
     background-color: var(--header-bg) !important;
     box-shadow: none !important;
-    border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+    border-bottom: 1px solid var(--border) !important;
 }
 .q-layout__section--marginal { background-color: transparent !important; }
 
-/* Header text should stay white */
-.q-header *, .q-header span, .q-header label, .q-header div {
-    color: inherit;
+/* Header element styling overrides to bypass global text color force */
+.q-header .logo-title {
+    color: #120E0C !important;
+}
+.q-header .logo-subtitle {
+    color: #827B77 !important;
+}
+.q-header .nav-link {
+    color: #827B77 !important;
+    font-family: 'Inter', sans-serif !important;
+    transition: color 0.18s ease;
+}
+.q-header .nav-link:hover {
+    color: #120E0C !important;
+}
+.q-header .sandwich-btn {
+    color: #120E0C !important;
 }
 
 /* Action bar (sub-header) */
@@ -103,9 +127,9 @@ div[style*="nicegui"] { display: none !important; }
     padding: 0 0.85rem;
     height: 32px;
     border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.04);
-    color: #D6D3D1 !important;
+    border: 1px solid var(--border);
+    background: #FFFFFF;
+    color: var(--text-primary) !important;
     font-family: 'Inter', sans-serif;
     font-size: 0.72rem;
     font-weight: 600;
@@ -117,9 +141,9 @@ div[style*="nicegui"] { display: none !important; }
     text-decoration: none;
 }
 .action-bar-btn:hover {
-    background: rgba(255,255,255,0.10);
-    border-color: rgba(255,255,255,0.18);
-    color: #FFFFFF !important;
+    background: #F6F5F3;
+    border-color: var(--text-primary);
+    color: var(--text-primary) !important;
     transform: translateY(-1px);
 }
 .action-bar-btn .material-icons {
@@ -128,14 +152,14 @@ div[style*="nicegui"] { display: none !important; }
     color: inherit !important;
 }
 .action-bar-btn.accent-btn {
-    background: rgba(201, 169, 110, 0.12);
-    border-color: rgba(201, 169, 110, 0.3);
-    color: #C9A96E !important;
+    background: #FFFBEB;
+    border-color: #F59E0B;
+    color: #B45309 !important;
 }
 .action-bar-btn.accent-btn:hover {
-    background: rgba(201, 169, 110, 0.22);
-    border-color: rgba(201, 169, 110, 0.5);
-    color: #E2C48A !important;
+    background: #FEF3C7;
+    border-color: #D97706;
+    color: #92400E !important;
 }
 
 /* Blur overlay for locked sections */
@@ -275,8 +299,10 @@ html { scroll-behavior: smooth; }
 .text-secondary-color {
     color: var(--text-secondary) !important;
 }
-"""
 
+.nav-link { color: #5A5450; }
+.nav-link:hover { color: #120E0C; }
+"""
 
 @contextmanager
 def page_layout(title: str = ""):
@@ -298,8 +324,8 @@ def page_layout(title: str = ""):
             )
             # Text block
             with ui.column().classes("gap-0"):
-                ui.html('<div style="font-family: \'Playfair Display\', serif; font-style: italic; font-weight: 600; font-size: 1.4rem; color: #FFFFFF; line-height: 1; margin-top: -2px;">Virix.</div>')
-                ui.label("PROPERTY SUITE").classes("text-[9px] font-bold tracking-widest uppercase").style("color: #827B77; line-height: 1; margin-top: 1px;")
+                ui.html('<div class="logo-title" style="font-family: \'Playfair Display\', serif; font-style: italic; font-weight: 600; font-size: 1.4rem; color: #120E0C; line-height: 1; margin-top: -2px;">Virix.</div>')
+                ui.label("PROPERTY SUITE").classes("logo-subtitle text-[9px] font-bold tracking-widest uppercase").style("color: #827B77; line-height: 1; margin-top: 1px;")
 
         # Navigation menu centered/right
         allowed_paths = []
@@ -319,18 +345,16 @@ def page_layout(title: str = ""):
         with ui.row().classes("items-center gap-8 hidden md:flex").style("margin-left: auto; margin-right: 2.5rem;"):
             for item in nav_items:
                 if item["path"] in allowed_paths:
-                    ui.label(item["label"].upper()).classes("text-[11px] font-semibold tracking-widest cursor-pointer hover:text-white transition-colors").style(
-                        "color: #D6D3D1; font-family: 'Inter', sans-serif;"
-                    ).on("click", lambda _, p=item["path"]: ui.navigate.to(p))
+                    ui.label(item["label"].upper()).classes("text-[11px] font-semibold tracking-widest cursor-pointer transition-colors nav-link").on("click", lambda _, p=item["path"]: ui.navigate.to(p))
 
-        # Hamburger menu button on the right
-        with ui.element("div").style(
-            "background-color: #2A2A2A; border: 1px solid rgba(255,255,255,0.1); "
-            "width: 34px; height: 34px; border-radius: 50%; cursor: pointer; "
+        # Hamburger menu button on the right (black sandwich with transparent background)
+        with ui.element("div").classes("sandwich-btn").style(
+            "background-color: transparent; border: none; "
+            "width: 34px; height: 34px; cursor: pointer; "
             "display: flex; align-items: center; justify-content: center; "
             "flex-shrink: 0;"
         ):
-            ui.icon("menu", size="20px").style("color: white; display: block;")
+            ui.icon("menu", size="24px").style("color: #120E0C; display: block;")
             with ui.menu().classes("w-48"):
                 ui.menu_item("Dashboard", on_click=lambda: ui.navigate.to("/")).classes("text-sm")
                 if role in ("superadmin", "admin"):
@@ -356,13 +380,13 @@ def _render_action_bar(role: str):
     """Render the quick-action toolbar below the header."""
     action_buttons = []
 
-    if role in ("admin", "manager"):
-        action_buttons.append({
-            "label": "New Tenant Intake",
-            "icon": "person_add",
-            "path": "/intake",
-            "accent": True,
-        })
+    # "Add Tenant" button always visible at start of bar
+    action_buttons.append({
+        "label": "Add Tenant",
+        "icon": "person_add",
+        "path": "/intake",
+        "accent": True,
+    })
     action_buttons.append({
         "label": "View Tenants",
         "icon": "groups",
@@ -394,7 +418,7 @@ def _render_action_bar(role: str):
         # Separator label
         ui.html('<span style="font-size:0.62rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#5A5450;margin-right:0.5rem;white-space:nowrap;">Quick&nbsp;Access</span>')
 
-        ui.html('<div style="width:1px;height:20px;background:rgba(255,255,255,0.07);margin-right:0.5rem;"></div>')
+        ui.html('<div style="width:1px;height:20px;background:var(--border);margin-right:0.5rem;"></div>')
 
         for btn in action_buttons:
             accent_class = "action-bar-btn accent-btn" if btn["accent"] else "action-bar-btn"
