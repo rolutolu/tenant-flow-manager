@@ -161,4 +161,13 @@ def login_page():
                     "color: #827B77"
                 )
 
+            # Beta notice
+            with ui.row().classes("items-center justify-center gap-2 mt-3 w-full"):
+                ui.badge("BETA", color="#F59E0B").classes("text-[10px]").style(
+                    "font-weight: 700; letter-spacing: 0.08em;"
+                )
+                ui.label("This is the beta version of Virix Property Suite.").classes("text-xs").style(
+                    "color: #A8A29E;"
+                )
+
 

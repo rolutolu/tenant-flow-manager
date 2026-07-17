@@ -1,9 +1,9 @@
-"""Shared UI theme — premium dark mode design with header, sidebar, and page wrapper."""
+"""Shared UI theme — premium light mode design with header and page wrapper."""
 
 from contextlib import contextmanager
 from nicegui import ui, app
 
-# ── Brand Colors (Light Mode) ─────────────────────────────────────────────────
+# ── Brand Colors ──────────────────────────────────────────────────────────────
 PRIMARY = "#120E0C"       # Rich warm charcoal/black
 PRIMARY_LIGHT = "#1E1B18"
 ACCENT = "#120E0C"        # Black
@@ -16,15 +16,6 @@ SUCCESS = "#10B981"
 WARNING = "#F59E0B"
 DANGER = "#EF4444"
 BORDER = "#E6E4DF"
-
-# ── Dark Mode Colors ──────────────────────────────────────────────────────────
-DARK_SURFACE = "#0F0D0C"
-DARK_CARD = "#1A1714"
-DARK_CARD_BORDER = "#2C2825"
-DARK_TEXT_PRIMARY = "#F2EDE8"
-DARK_TEXT_SECONDARY = "#8A8480"
-DARK_HEADER = "#0A0908"
-DARK_ACCENT = "#C9A96E"      # Warm gold accent for dark mode
 
 # ── Global Styles ──────────────────────────────────────────────────────────────
 GLOBAL_CSS = """
@@ -49,30 +40,18 @@ GLOBAL_CSS = """
     --label-color: #827B77;
 }
 
-.dark-mode {
-    --surface: #0F0D0C;
-    --card-bg: #1A1714;
-    --text-primary: #F2EDE8;
-    --text-secondary: #8A8480;
-    --border: #2C2825;
-    --header-bg: #0A0908;
-    --metric-line: #2C2825;
-    --scrollbar-thumb: #3A3633;
-    --scrollbar-thumb-hover: #5A5450;
-    --action-bar-bg: #131110;
-    --action-bar-border: rgba(255,255,255,0.04);
-    --card-shadow: rgba(0,0,0,0.2);
-    --card-shadow-hover: rgba(0,0,0,0.35);
-    --icon-bg: linear-gradient(135deg, #C9A96E22, #C9A96E0A);
-    --icon-color: #C9A96E;
-    --label-color: #8A8480;
-}
-
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
     cursor: default;
     background-color: var(--surface) !important;
-    transition: background-color 0.3s ease;
+}
+
+/* Force all text to dark/black */
+body, p, span, div, label, h1, h2, h3, h4, h5, h6,
+.q-field__native, .q-field__prefix, .q-field__suffix, .q-field__input,
+.q-btn__content, .q-item__label, .q-tab__label,
+.q-table td, .q-table th {
+    color: var(--text-primary) !important;
 }
 
 input, button, select, textarea, label,
@@ -98,6 +77,11 @@ div[style*="nicegui"] { display: none !important; }
 }
 .q-layout__section--marginal { background-color: transparent !important; }
 
+/* Header text should stay white */
+.q-header *, .q-header span, .q-header label, .q-header div {
+    color: inherit;
+}
+
 /* Action bar (sub-header) */
 .action-bar {
     background-color: var(--action-bar-bg);
@@ -110,7 +94,6 @@ div[style*="nicegui"] { display: none !important; }
     position: sticky;
     z-index: 10;
     overflow-x: auto;
-    transition: background-color 0.3s ease;
 }
 
 .action-bar-btn {
@@ -122,7 +105,7 @@ div[style*="nicegui"] { display: none !important; }
     border-radius: 8px;
     border: 1px solid rgba(255,255,255,0.08);
     background: rgba(255,255,255,0.04);
-    color: #D6D3D1;
+    color: #D6D3D1 !important;
     font-family: 'Inter', sans-serif;
     font-size: 0.72rem;
     font-weight: 600;
@@ -136,50 +119,23 @@ div[style*="nicegui"] { display: none !important; }
 .action-bar-btn:hover {
     background: rgba(255,255,255,0.10);
     border-color: rgba(255,255,255,0.18);
-    color: #FFFFFF;
+    color: #FFFFFF !important;
     transform: translateY(-1px);
 }
 .action-bar-btn .material-icons {
     font-size: 16px !important;
     opacity: 0.85;
+    color: inherit !important;
 }
 .action-bar-btn.accent-btn {
     background: rgba(201, 169, 110, 0.12);
     border-color: rgba(201, 169, 110, 0.3);
-    color: #C9A96E;
+    color: #C9A96E !important;
 }
 .action-bar-btn.accent-btn:hover {
     background: rgba(201, 169, 110, 0.22);
     border-color: rgba(201, 169, 110, 0.5);
-    color: #E2C48A;
-}
-
-/* Dark mode toggle button */
-.dark-toggle {
-    margin-left: auto;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0 0.75rem;
-    height: 30px;
-    border-radius: 15px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.05);
-    color: #9A9590;
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    cursor: pointer;
-    transition: all 0.18s ease;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
-.dark-toggle:hover {
-    background: rgba(255,255,255,0.10);
-    color: #D6D3D1;
-}
-.dark-toggle .material-icons {
-    font-size: 14px !important;
+    color: #E2C48A !important;
 }
 
 /* Blur overlay for locked sections */
@@ -263,7 +219,6 @@ html { scroll-behavior: smooth; }
     background-color: var(--metric-line);
     border-radius: 1.5px;
     margin-top: 6px;
-    transition: background-color 0.3s ease;
 }
 
 .q-menu {
@@ -281,7 +236,6 @@ html { scroll-behavior: smooth; }
     box-shadow: 0 4px 20px var(--card-shadow) !important;
     border: 1px solid var(--border) !important;
     background-color: var(--card-bg) !important;
-    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .q-table__container {
@@ -309,34 +263,19 @@ html { scroll-behavior: smooth; }
     width: 100%;
     margin-top: 4px;
     margin-bottom: 16px;
-    transition: background-color 0.3s ease;
 }
 
-/* Dark mode overrides for Quasar components */
-.dark-mode .q-page {
-    background-color: var(--surface) !important;
-}
-.dark-mode .q-header {
-    background-color: var(--header-bg) !important;
-}
-
-/* Page background transitions */
+/* Page background */
 .page-content {
     background-color: var(--surface);
     min-height: 100vh;
-    transition: background-color 0.3s ease;
+}
+
+/* Secondary text override — keep secondary labels lighter */
+.text-secondary-color {
+    color: var(--text-secondary) !important;
 }
 """
-
-
-def _get_dark_mode() -> bool:
-    """Get current dark mode preference from user storage."""
-    return app.storage.user.get("dark_mode", True)  # default = True
-
-
-def _set_dark_mode(enabled: bool):
-    """Persist dark mode preference."""
-    app.storage.user["dark_mode"] = enabled
 
 
 @contextmanager
@@ -345,68 +284,10 @@ def page_layout(title: str = ""):
     # Inject global styles
     ui.add_head_html(f"<style>{GLOBAL_CSS}</style>")
 
-    # Inject dark mode class toggler script with MutationObserver guard
-    ui.add_head_html("""
-    <script>
-    // Global dark mode state — set by server, read by observer
-    window.__darkModeEnabled = undefined;
-
-    function applyDarkMode(enabled) {
-        window.__darkModeEnabled = enabled;
-        if (enabled) {
-            document.body.classList.add('dark-mode');
-        } else {
-            document.body.classList.remove('dark-mode');
-        }
-    }
-
-    // MutationObserver: re-apply dark-mode class if NiceGUI/Quasar strips it
-    (function() {
-        // Determine initial state from NiceGUI user storage (prevents flash)
-        try {
-            var stored = localStorage.getItem('nicegui:user');
-            if (stored) {
-                var data = JSON.parse(stored);
-                window.__darkModeEnabled = data.dark_mode !== undefined ? data.dark_mode : true;
-            } else {
-                window.__darkModeEnabled = true;
-            }
-        } catch(e) {
-            window.__darkModeEnabled = true;
-        }
-
-        // Apply immediately
-        if (window.__darkModeEnabled) document.body.classList.add('dark-mode');
-
-        // Watch for class mutations on body and re-apply if stripped
-        if (!window.__darkModeObserver) {
-            window.__darkModeObserver = new MutationObserver(function(mutations) {
-                if (window.__darkModeEnabled === undefined) return;
-                for (var m of mutations) {
-                    if (m.type === 'attributes' && m.attributeName === 'class') {
-                        var hasDark = document.body.classList.contains('dark-mode');
-                        if (window.__darkModeEnabled && !hasDark) {
-                            document.body.classList.add('dark-mode');
-                        } else if (!window.__darkModeEnabled && hasDark) {
-                            document.body.classList.remove('dark-mode');
-                        }
-                    }
-                }
-            });
-            window.__darkModeObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-        }
-    })();
-    </script>
-    """)
-
     ui.colors(primary=PRIMARY, secondary=ACCENT, accent=ACCENT, positive=SUCCESS,
               negative=DANGER, warning=WARNING)
 
     role = app.storage.user.get("role", "viewer")
-    dark_mode = _get_dark_mode()
-
-    # Apply dark mode class on body via JS on each page load
-    ui.run_javascript(f"applyDarkMode({str(dark_mode).lower()})")
 
     # ── Top Header ─────────────────────────────────────────────────────────
     with ui.header().classes("items-center justify-between px-8 py-4 shadow-sm"):
@@ -509,8 +390,6 @@ def _render_action_bar(role: str):
         "accent": False,
     })
 
-    dark_mode = _get_dark_mode()
-
     with ui.element("div").classes("action-bar"):
         # Separator label
         ui.html('<span style="font-size:0.62rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#5A5450;margin-right:0.5rem;white-space:nowrap;">Quick&nbsp;Access</span>')
@@ -525,26 +404,6 @@ def _render_action_bar(role: str):
                 f'{btn["label"]}'
                 f'</a>'
             )
-
-        # Spacer + dark mode toggle (right-aligned)
-        is_dark = _get_dark_mode()
-        toggle_icon = "light_mode" if is_dark else "dark_mode"
-        toggle_label = "Light Mode" if is_dark else "Dark Mode"
-
-        def toggle_dark_mode():
-            current = _get_dark_mode()
-            new_val = not current
-            _set_dark_mode(new_val)
-            ui.run_javascript(f"applyDarkMode({str(new_val).lower()})")
-            # Reload so server re-renders with correct mode
-            ui.navigate.to(ui.context.client.page.path)
-
-        ui.button(toggle_label, icon=toggle_icon, on_click=toggle_dark_mode).classes(
-            "dark-toggle"
-        ).props("flat dense no-caps")
-
-    # Register applyDarkMode as a global (needed on first load)
-    ui.run_javascript(f"window.__darkMode = {str(dark_mode).lower()};")
 
 
 def _logout():

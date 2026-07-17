@@ -186,7 +186,13 @@ async def actions_page():
                         ]
 
                         def handle_edit(e):
-                            open_tenant_edit_dialog(e.args, on_saved=lambda: ui.navigate.to("/actions"))
+                            row = e.args
+                            if isinstance(row, list):
+                                row = row[0] if row else {}
+                            if not isinstance(row, dict) or not row:
+                                ui.notify("Could not load tenant data for editing.", type="warning")
+                                return
+                            open_tenant_edit_dialog(row, on_saved=lambda: ui.navigate.to("/actions"))
 
                         tbl = ui.table(columns=columns, rows=display_tenants).classes("w-full").props(
                             "flat bordered dense"

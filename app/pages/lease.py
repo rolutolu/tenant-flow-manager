@@ -232,7 +232,13 @@ async def lease_page():
                             ui.notify("Failed to delete tenant", type="negative")
 
                     def handle_edit(e):
-                        open_tenant_edit_dialog(e.args, on_saved=lambda: ui.navigate.to("/lease"))
+                        row = e.args
+                        if isinstance(row, list):
+                            row = row[0] if row else {}
+                        if not isinstance(row, dict) or not row:
+                            ui.notify("Could not load tenant data for editing.", type="warning")
+                            return
+                        open_tenant_edit_dialog(row, on_saved=lambda: ui.navigate.to("/lease"))
 
                     tbl = ui.table(columns=cols, rows=rows).classes("w-full").props("flat")
                     tbl.add_slot("body-cell-docs", """
