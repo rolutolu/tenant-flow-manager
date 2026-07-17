@@ -345,29 +345,55 @@ def page_layout(title: str = ""):
     # Inject global styles
     ui.add_head_html(f"<style>{GLOBAL_CSS}</style>")
 
-    # Inject dark mode class toggler script
+    # Inject dark mode class toggler script with MutationObserver guard
     ui.add_head_html("""
     <script>
+    // Global dark mode state — set by server, read by observer
+    window.__darkModeEnabled = undefined;
+
     function applyDarkMode(enabled) {
+        window.__darkModeEnabled = enabled;
         if (enabled) {
             document.body.classList.add('dark-mode');
         } else {
             document.body.classList.remove('dark-mode');
         }
     }
-    // Immediately apply based on storage (prevents flash)
+
+    // MutationObserver: re-apply dark-mode class if NiceGUI/Quasar strips it
     (function() {
+        // Determine initial state from NiceGUI user storage (prevents flash)
         try {
             var stored = localStorage.getItem('nicegui:user');
             if (stored) {
                 var data = JSON.parse(stored);
-                var dm = data.dark_mode !== undefined ? data.dark_mode : true;
-                if (dm) document.body.classList.add('dark-mode');
+                window.__darkModeEnabled = data.dark_mode !== undefined ? data.dark_mode : true;
             } else {
-                document.body.classList.add('dark-mode');
+                window.__darkModeEnabled = true;
             }
         } catch(e) {
-            document.body.classList.add('dark-mode');
+            window.__darkModeEnabled = true;
+        }
+
+        // Apply immediately
+        if (window.__darkModeEnabled) document.body.classList.add('dark-mode');
+
+        // Watch for class mutations on body and re-apply if stripped
+        if (!window.__darkModeObserver) {
+            window.__darkModeObserver = new MutationObserver(function(mutations) {
+                if (window.__darkModeEnabled === undefined) return;
+                for (var m of mutations) {
+                    if (m.type === 'attributes' && m.attributeName === 'class') {
+                        var hasDark = document.body.classList.contains('dark-mode');
+                        if (window.__darkModeEnabled && !hasDark) {
+                            document.body.classList.add('dark-mode');
+                        } else if (!window.__darkModeEnabled && hasDark) {
+                            document.body.classList.remove('dark-mode');
+                        }
+                    }
+                }
+            });
+            window.__darkModeObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
         }
     })();
     </script>
@@ -456,6 +482,13 @@ def _render_action_bar(role: str):
             "path": "/intake",
             "accent": True,
         })
+    action_buttons.append({
+        "label": "View Tenants",
+        "icon": "groups",
+        "path": "/actions",
+        "accent": False,
+    })
+    if role in ("admin", "manager"):
         action_buttons.append({
             "label": "Generate Lease",
             "icon": "description",
